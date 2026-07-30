@@ -764,7 +764,6 @@ function saveFleet(f) {
 }
 
 let fleetData = loadFleet();
-saveFleet(fleetData);
 
 function formatearFecha(f) {
   if (!f) return '';
@@ -1250,8 +1249,14 @@ function deleteVehicle(id) {
   showToast(`🗑️ ${v.cabezal} eliminado de la asignación de cisternas`);
 }
 
-renderTable();
-sincronizar();
+(async function init() {
+  await sincronizar();
+  if (!fleetData || fleetData.length === 0) {
+    fleetData = loadFleet();
+  }
+  saveFleet(fleetData);
+  renderTable();
+})();
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js');

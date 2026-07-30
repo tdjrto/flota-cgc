@@ -1,15 +1,6 @@
-const CACHE = "flota-cgc-v1";
-const urls = [
-  "flota-cisternas.html",
-  "gastos.html",
-  "manifest.json",
-  "icon.svg"
-];
+const CACHE = "flota-cgc-v2";
 
 self.addEventListener("install", e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(urls))
-  );
   self.skipWaiting();
 });
 
@@ -24,6 +15,12 @@ self.addEventListener("activate", e => {
 
 self.addEventListener("fetch", e => {
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request).catch(() => r))
+    fetch(e.request)
+      .then(res => {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+        return res;
+      })
+      .catch(() => caches.match(e.request))
   );
 });
