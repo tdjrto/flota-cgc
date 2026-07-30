@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gastos RJ">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Control de Gastos - REPUESTOS JUNIOR</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; color: #333; padding: 20px; }
+.container { max-width: 1400px; margin: 0 auto; }
+header { background: linear-gradient(135deg, #1a237e, #283593); color: #fff; padding: 20px 30px; border-radius: 12px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+header h1 { font-size: 24px; letter-spacing: 1px; }
+header h1 small { font-size: 14px; opacity: 0.8; font-weight: normal; margin-left: 10px; }
+.header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { padding: 8px 18px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+.btn-primary { background: #3949ab; color: #fff; }
+.btn-primary:hover { background: #303f9f; }
+.btn-success { background: #43a047; color: #fff; }
+.btn-success:hover { background: #388e3c; }
+.btn-danger { background: #e53935; color: #fff; }
+.btn-danger:hover { background: #c62828; }
+.btn-warning { background: #fb8c00; color: #fff; }
+.btn-warning:hover { background: #ef6c00; }
+.btn-outline { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.5); }
+.btn-outline:hover { background: rgba(255,255,255,0.1); }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.summary-card { background: #fff; padding: 18px 22px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+.summary-card .label { font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+.summary-card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+.summary-card .value.green { color: #43a047; }
+.summary-card .value.blue { color: #1a237e; }
+.toolbar { background: #fff; padding: 14px 20px; border-radius: 10px; margin-bottom: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+.toolbar .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.toolbar input, .toolbar select { padding: 7px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; outline: none; }
+.toolbar input:focus, .toolbar select:focus { border-color: #3949ab; }
+.table-wrap { overflow-x: auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+thead { background: #1a237e; color: #fff; }
+th { padding: 12px 14px; text-align: left; font-size: 13px; font-weight: 600; letter-spacing: 0.3px; white-space: nowrap; }
+td { padding: 10px 14px; border-bottom: 1px solid #eee; font-size: 14px; }
+tr:hover td { background: #f5f7ff; }
+tr:last-child td { border-bottom: none; }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.monto-col, .total-col { font-weight: 600; font-family: 'Consolas', monospace; }
+.actions-col { white-space: nowrap; }
+.empty-row td { text-align: center; padding: 40px; color: #999; font-style: italic; }
+/* Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+.modal-overlay.active { display: flex; }
+.modal { background: #fff; border-radius: 12px; width: 95%; max-width: 680px; max-height: 90vh; overflow-y: auto; padding: 28px 32px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+.modal h2 { font-size: 20px; margin-bottom: 20px; color: #1a237e; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; }
+.form-grid .full { grid-column: 1 / -1; }
+.form-group { display: flex; flex-direction: column; }
+.form-group label { font-size: 13px; font-weight: 600; color: #555; margin-bottom: 4px; }
+.form-group input, .form-group textarea, .form-group select { padding: 9px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; outline: none; font-family: inherit; }
+.form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: #3949ab; }
+.form-group textarea { resize: vertical; min-height: 50px; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid #eee; }
+/* Toast */
+.toast { position: fixed; bottom: 30px; right: 30px; padding: 14px 24px; border-radius: 8px; color: #fff; font-weight: 500; font-size: 14px; z-index: 2000; opacity: 0; transform: translateY(20px); transition: all 0.3s; pointer-events: none; }
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.success { background: #43a047; }
+.toast.error { background: #e53935; }
+.toast.info { background: #1a237e; }
+@media (max-width: 768px) {
+  body { padding: 12px; }
+  header { flex-direction: column; align-items: flex-start; }
+  .form-grid { grid-template-columns: 1fr; }
+  .modal { padding: 20px; }
+  .summary { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div>
+      <h1>REPUESTOS JUNIOR <small>Control de Gastos</small></h1>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span id="syncStatus" style="font-size:0.75rem;font-weight:600;padding:0.25rem 0.7rem;border-radius:12px;background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);white-space:nowrap">○ Conectando...</span>
+    <div class="header-actions">
+      <button class="btn btn-success" onclick="agregarGasto()">+ Nuevo Gasto</button>
+      <button class="btn btn-outline" onclick="exportarCSV()">Descargar CSV</button>
+      <button class="btn btn-outline" onclick="document.getElementById('fileInput').click()">Importar CSV</button>
+
+      <input type="file" id="fileInput" accept=".csv" style="display:none" onchange="importarCSV(event)">
+    </div>
+    </div>
+  </header>
+
+  <div class="summary" id="resumen">
+    <div class="summary-card"><div class="label">Total Gastos</div><div class="value blue" id="totalGastos">$0</div></div>
+    <div class="summary-card"><div class="label">Cantidad Registros</div><div class="value blue" id="cantidadRegistros">0</div></div>
+    <div class="summary-card"><div class="label">Unidades</div><div class="value blue" id="unidadesCount">0</div></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="filters">
+      <input type="text" id="buscar" placeholder="Buscar..." oninput="renderTabla()">
+      <input type="text" id="filtroPlaca" placeholder="Placa..." oninput="renderTabla()" style="width:100px">
+      <select id="filtroMes" onchange="renderTabla()">
+        <option value="">Todos los meses</option>
+        <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
+        <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
+        <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
+        <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+      </select>
+    </div>
+    <span id="resultCount" style="color:#888;font-size:14px;"></span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Fecha</th><th>Comercio</th><th>Factura</th><th>Unidad</th><th>Placa</th>
+          <th class="text-right">Monto</th><th>Detalle</th><th>Propietario</th>
+          <th class="text-right">Total</th><th class="text-center">Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tablaBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2 id="modalTitle">Nuevo Gasto</h2>
+    <div class="form-grid">
+      <div class="form-group"><label>Fecha</label><input type="date" id="fFecha"></div>
+      <div class="form-group"><label>Comercio</label><input type="text" id="fComercio" placeholder="Nombre del comercio"></div>
+      <div class="form-group"><label>Factura N°</label><input type="text" id="fFactura" placeholder="N° de factura"></div>
+      <div class="form-group"><label>Unidad</label><input type="text" id="fUnidad" placeholder="Ej: Camión 1"></div>
+      <div class="form-group"><label>Placa</label><input type="text" id="fPlaca" placeholder="ABC-123"></div>
+      <div class="form-group"><label>Monto</label><input type="number" id="fMonto" step="0.01" min="0" placeholder="0.00"></div>
+      <div class="form-group full"><label>Detalle</label><textarea id="fDetalle" placeholder="Descripción del gasto..."></textarea></div>
+      <div class="form-group"><label>Propietario</label><input type="text" id="fPropietario" placeholder="Nombre del propietario"></div>
+      <div class="form-group"><label>Total</label><input type="number" id="fTotal" step="0.01" min="0" placeholder="0.00"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-success" id="btnGuardar" onclick="guardarGasto()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let datos = [];
+let editandoId = null;
+
+const STORAGE_KEY = 'repuestosJuniorGastos';
+let servidorConectado = false;
+
+const firebaseConfig = {
+  apiKey: "AQUI_TU_API_KEY",
+  authDomain: "AQUI_TU_PROJECT.firebaseapp.com",
+  databaseURL: "https://AQUI_TU_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "AQUI_TU_PROJECT",
+  storageBucket: "AQUI_TU_PROJECT.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef"
+};
+
+let dbRef = null;
+try {
+  firebase.initializeApp(firebaseConfig);
+  dbRef = firebase.database().ref();
+} catch(e) { dbRef = null; }
+
+async function sincronizar() {
+  if (!dbRef) return;
+  try {
+    const snap = await dbRef.child("gastos").once("value");
+    const raw = snap.val();
+    let data = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (data && typeof data === "object" && !Array.isArray(data)) {
+      data = Object.values(data).filter(v => v && typeof v === "object");
+    }
+    if (Array.isArray(data) && data.length > 0) {
+      datos = data;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(datos));
+      renderTabla();
+      actualizarResumen();
+    }
+    servidorConectado = true;
+    document.getElementById("syncStatus").textContent = "● Nube";
+    document.getElementById("syncStatus").style.color = "#2e7d32";
+  } catch(e) {
+    servidorConectado = false;
+    document.getElementById("syncStatus").textContent = "○ Local";
+    document.getElementById("syncStatus").style.color = "#94a3b8";
+  }
+}
+
+async function guardarNube() {
+  if (!dbRef) return;
+  try {
+    await dbRef.child("gastos").set(JSON.stringify(datos));
+    if (!servidorConectado) {
+      servidorConectado = true;
+      document.getElementById("syncStatus").textContent = "● Nube";
+      document.getElementById("syncStatus").style.color = "#2e7d32";
+    }
+  } catch(e) {
+    servidorConectado = false;
+    document.getElementById("syncStatus").textContent = "○ Local";
+    document.getElementById("syncStatus").style.color = "#94a3b8";
+  }
+}
+
+function cargarDatos() {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored) {
+    try { datos = JSON.parse(stored); } catch(e) { datos = []; }
+  }
+  renderTabla();
+  actualizarResumen();
+}
+
+function guardarStorage() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(datos));
+  guardarNube();
+}
+
+function obtenerId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2,5);
+}
+
+function formatearFecha(fechaStr) {
+  if (!fechaStr) return '';
+  const partes = fechaStr.split('-');
+  if (partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`;
+  return fechaStr;
+}
+
+function formatearMoneda(valor) {
+  const num = parseFloat(valor) || 0;
+  return '$ ' + num.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function renderTabla() {
+  const buscar = document.getElementById('buscar').value.toLowerCase().trim();
+  const filtroPlaca = document.getElementById('filtroPlaca').value.toLowerCase().trim();
+  const filtroMes = document.getElementById('filtroMes').value;
+  const tbody = document.getElementById('tablaBody');
+
+  let filtrados = datos.filter(g => {
+    if (buscar) {
+      const buscaEn = `${g.fecha} ${g.comercio} ${g.factura} ${g.unidad} ${g.placa} ${g.detalle} ${g.propietario}`.toLowerCase();
+      if (!buscaEn.includes(buscar)) return false;
+    }
+    if (filtroPlaca && !g.placa.toLowerCase().includes(filtroPlaca)) return false;
+    if (filtroMes) {
+      const mes = g.fecha ? g.fecha.substring(5, 7) : '';
+      if (mes !== filtroMes) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('resultCount').textContent = `${filtrados.length} de ${datos.length} registros`;
+
+  if (filtrados.length === 0) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="10">No hay gastos registrados. Hacé clic en "+ Nuevo Gasto" para comenzar.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtrados.map(g => `
+    <tr>
+      <td>${formatearFecha(g.fecha)}</td>
+      <td>${escHtml(g.comercio)}</td>
+      <td>${escHtml(g.factura)}</td>
+      <td>${escHtml(g.unidad)}</td>
+      <td>${escHtml(g.placa)}</td>
+      <td class="text-right monto-col">${formatearMoneda(g.monto)}</td>
+      <td>${escHtml(g.detalle)}</td>
+      <td>${escHtml(g.propietario)}</td>
+      <td class="text-right total-col">${formatearMoneda(g.total)}</td>
+      <td class="text-center actions-col">
+        <button class="btn btn-primary btn-sm" onclick="editarGasto('${g.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="eliminarGasto('${g.id}')">Eliminar</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function escHtml(t) { return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function actualizarResumen() {
+  const total = datos.reduce((sum, g) => sum + (parseFloat(g.total) || parseFloat(g.monto) || 0), 0);
+  document.getElementById('totalGastos').textContent = formatearMoneda(total);
+  document.getElementById('cantidadRegistros').textContent = datos.length;
+  const unidades = new Set(datos.map(g => g.unidad).filter(Boolean));
+  document.getElementById('unidadesCount').textContent = unidades.size;
+}
+
+function mostrarToast(msg, tipo = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${tipo} show`;
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function abrirModal(gasto = null) {
+  editandoId = gasto ? gasto.id : null;
+  document.getElementById('modalTitle').textContent = gasto ? 'Editar Gasto' : 'Nuevo Gasto';
+  document.getElementById('btnGuardar').textContent = gasto ? 'Actualizar' : 'Guardar';
+  document.getElementById('fFecha').value = gasto ? (gasto.fecha || '') : new Date().toISOString().substring(0, 10);
+  document.getElementById('fComercio').value = gasto ? (gasto.comercio || '') : '';
+  document.getElementById('fFactura').value = gasto ? (gasto.factura || '') : '';
+  document.getElementById('fUnidad').value = gasto ? (gasto.unidad || '') : '';
+  document.getElementById('fPlaca').value = gasto ? (gasto.placa || '') : '';
+  document.getElementById('fMonto').value = gasto ? (gasto.monto || '') : '';
+  document.getElementById('fDetalle').value = gasto ? (gasto.detalle || '') : '';
+  document.getElementById('fPropietario').value = gasto ? (gasto.propietario || '') : '';
+  document.getElementById('fTotal').value = gasto ? (gasto.total || '') : '';
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+function cerrarModal() {
+  document.getElementById('modalOverlay').classList.remove('active');
+  editandoId = null;
+}
+
+function guardarGasto() {
+  const fecha = document.getElementById('fFecha').value;
+  const comercio = document.getElementById('fComercio').value.trim();
+  const factura = document.getElementById('fFactura').value.trim();
+  const unidad = document.getElementById('fUnidad').value.trim();
+  const placa = document.getElementById('fPlaca').value.trim();
+  const monto = document.getElementById('fMonto').value;
+  const detalle = document.getElementById('fDetalle').value.trim();
+  const propietario = document.getElementById('fPropietario').value.trim();
+  const total = document.getElementById('fTotal').value;
+
+  if (!fecha) { mostrarToast('La fecha es obligatoria', 'error'); return; }
+  if (!comercio) { mostrarToast('El comercio es obligatorio', 'error'); return; }
+
+  const gasto = {
+    fecha, comercio, factura, unidad, placa,
+    monto: monto || '0',
+    detalle, propietario,
+    total: total || monto || '0'
+  };
+
+  if (editandoId) {
+    const idx = datos.findIndex(g => g.id === editandoId);
+    if (idx !== -1) { datos[idx] = { ...datos[idx], ...gasto }; }
+    mostrarToast('Gasto actualizado correctamente', 'info');
+  } else {
+    gasto.id = obtenerId();
+    datos.push(gasto);
+    mostrarToast('Gasto agregado correctamente', 'success');
+  }
+
+  guardarStorage();
+  renderTabla();
+  actualizarResumen();
+  cerrarModal();
+}
+
+function agregarGasto() { abrirModal(null); }
+
+function editarGasto(id) {
+  const gasto = datos.find(g => g.id === id);
+  if (gasto) abrirModal(gasto);
+}
+
+function eliminarGasto(id) {
+  if (!confirm('¿Estás seguro de eliminar este gasto?')) return;
+  datos = datos.filter(g => g.id !== id);
+  guardarStorage();
+  renderTabla();
+  actualizarResumen();
+  mostrarToast('Gasto eliminado', 'info');
+}
+
+function exportarCSV() {
+  if (datos.length === 0) { mostrarToast('No hay datos para exportar', 'error'); return; }
+  const separador = ';';
+  const BOM = '\uFEFF';
+  let csv = BOM;
+  csv += 'REPUESTOS JUNIOR' + separador.repeat(8) + '\n';
+  csv += separador.repeat(8) + '\n';
+  csv += separador.repeat(8) + '\n';
+  csv += 'CONTRATADOS' + separador.repeat(8) + '\n';
+  csv += ['Fecha','Comercio','Factura','Unidad','Placa','Monto','Detalle','Propietario','Total'].join(separador) + '\n';
+  datos.forEach(g => {
+    csv += [
+      g.fecha || '',
+      g.comercio || '',
+      g.factura || '',
+      g.unidad || '',
+      g.placa || '',
+      g.monto || '',
+      (g.detalle || '').replace(/;/g, ','),
+      g.propietario || '',
+      g.total || ''
+    ].join(separador) + '\n';
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Ingreso de gastos.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  mostrarToast('CSV exportado correctamente', 'success');
+}
+
+function importarCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const texto = e.target.result;
+      const lineas = texto.split(/\r?\n/).filter(l => l.trim() !== '');
+      let inicioDatos = -1;
+      for (let i = 0; i < lineas.length; i++) {
+        if (lineas[i].includes('Fecha') && lineas[i].includes('Comercio')) {
+          inicioDatos = i + 1;
+          break;
+        }
+      }
+      if (inicioDatos === -1 || inicioDatos >= lineas.length) {
+        mostrarToast('No se encontraron datos en el CSV', 'error'); return;
+      }
+      const importados = [];
+      for (let i = inicioDatos; i < lineas.length; i++) {
+        const cols = lineas[i].split(';');
+        if (cols.length < 5) continue;
+        const fecha = cols[0] ? cols[0].trim() : '';
+        if (!fecha) continue;
+        const g = {
+          id: obtenerId(),
+          fecha: fecha,
+          comercio: cols[1] ? cols[1].trim() : '',
+          factura: cols[2] ? cols[2].trim() : '',
+          unidad: cols[3] ? cols[3].trim() : '',
+          placa: cols[4] ? cols[4].trim() : '',
+          monto: cols[5] ? cols[5].trim() : '0',
+          detalle: cols[6] ? cols[6].trim() : '',
+          propietario: cols[7] ? cols[7].trim() : '',
+          total: cols[8] ? cols[8].trim() : '0'
+        };
+        importados.push(g);
+      }
+      if (importados.length === 0) { mostrarToast('No se encontraron registros válidos', 'error'); return; }
+      if (confirm(`Se encontraron ${importados.length} registros. ¿Agregarlos a los existentes?`)) {
+        datos = [...datos, ...importados];
+        guardarStorage();
+        renderTabla();
+        actualizarResumen();
+        mostrarToast(`${importados.length} registros importados correctamente`, 'success');
+      }
+    } catch(err) {
+      mostrarToast('Error al importar CSV: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+(async function init() {
+  cargarDatos();
+  await sincronizar();
+})();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
+</body>
+</html>

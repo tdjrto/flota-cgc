@@ -718,18 +718,28 @@ try {
 
 let servidorConectado = false;
 
+async function cargarDeFirebase(clave) {
+  const snap = await dbRef.child(clave).once("value");
+  const raw = snap.val();
+  let datos = typeof raw === "string" ? JSON.parse(raw) : raw;
+  if (datos && typeof datos === "object" && !Array.isArray(datos)) {
+    datos = Object.values(datos).filter(v => v && typeof v === "object");
+  }
+  return Array.isArray(datos) ? datos : null;
+}
+
 async function sincronizar() {
   if (!dbRef) return;
   try {
-    const snap = await dbRef.child("flota").once("value");
-    const raw = snap.val();
-    let datos = typeof raw === "string" ? JSON.parse(raw) : raw;
-    if (datos && typeof datos === "object" && !Array.isArray(datos)) {
-      datos = Object.values(datos).filter(v => v && typeof v === "object");
+    const f = await cargarDeFirebase("flota");
+    if (f) {
+      localStorage.setItem("flota_main_fleet", JSON.stringify(f));
+      fleetData = f;
     }
-    if (Array.isArray(datos) && datos.length > 0) {
-      localStorage.setItem("flota_main_fleet", JSON.stringify(datos));
-      fleetData = datos;
+    const v = await cargarDeFirebase("vehiculos");
+    if (v) {
+      localStorage.setItem("flota_vehicle_db", JSON.stringify(v));
+      vehicleDB = v;
     }
     servidorConectado = true;
     document.getElementById("syncStatus").textContent = "● Nube";
@@ -1111,7 +1121,6 @@ function loadDB() {
 }
 function saveDB(db) {
   localStorage.setItem("flota_vehicle_db", JSON.stringify(db));
-  guardarNube("flota", fleetData);
 }
 
 let vehicleDB = loadDB();
@@ -1202,7 +1211,7 @@ function editVehicle(id) {
   document.getElementById("formCabezal").focus();
 }
 
-function saveVehicle() {
+async function saveVehicle() {
   const cabezal = document.getElementById("formCabezal").value.trim().toUpperCase();
   const remolque = document.getElementById("formRemolque").value.trim().toUpperCase();
   const conductor = document.getElementById("formConductor").value.trim().toUpperCase();
@@ -1228,12 +1237,14 @@ function saveVehicle() {
       v.dotacion = dotacion;
       v.propietario = propietario;
       saveDB(vehicleDB);
+      await guardarNube("vehiculos", vehicleDB);
       showToast(`✏️ ${cabezal} actualizado`);
     }
   } else {
     const maxId = vehicleDB.reduce((m, v) => Math.max(m, v.id), 0);
     vehicleDB.push({ id: maxId + 1, cabezal, remolque, cist, ejes, conductor, dotacion, propietario });
     saveDB(vehicleDB);
+    await guardarNube("vehiculos", vehicleDB);
     showToast(`➕ ${cabezal} (${cist}) agregado a la asignación de cisternas`);
   }
 
@@ -1242,12 +1253,13 @@ function saveVehicle() {
   renderTable();
 }
 
-function deleteVehicle(id) {
+async function deleteVehicle(id) {
   const v = vehicleDB.find(x => x.id === id);
   if (!v) return;
   if (!confirm(`¿Eliminar ${v.cabezal} (${v.cist}) - ${v.conductor}?`)) return;
   vehicleDB = vehicleDB.filter(x => x.id !== id);
   saveDB(vehicleDB);
+  await guardarNube("vehiculos", vehicleDB);
   renderDBTable();
   renderTable();
   showToast(`🗑️ ${v.cabezal} eliminado de la asignación de cisternas`);
@@ -1258,7 +1270,11 @@ function deleteVehicle(id) {
   if (!fleetData || fleetData.length === 0) {
     fleetData = loadFleet();
   }
+  if (!vehicleDB || vehicleDB.length === 0) {
+    vehicleDB = loadDB();
+  }
   saveFleet(fleetData);
+  if (dbRef) guardarNube("vehiculos", vehicleDB);
   renderTable();
 })();
 
