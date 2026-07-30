@@ -722,7 +722,10 @@ async function sincronizar() {
   if (!dbRef) return;
   try {
     const snap = await dbRef.child("flota").once("value");
-    const datos = snap.val();
+    let datos = snap.val();
+    if (datos && typeof datos === "object" && !Array.isArray(datos)) {
+      datos = Object.values(datos).filter(v => v && typeof v === "object");
+    }
     if (Array.isArray(datos) && datos.length > 0) {
       localStorage.setItem("flota_main_fleet", JSON.stringify(datos));
       fleetData = datos;
