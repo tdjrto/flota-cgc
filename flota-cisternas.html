@@ -722,7 +722,8 @@ async function sincronizar() {
   if (!dbRef) return;
   try {
     const snap = await dbRef.child("flota").once("value");
-    let datos = snap.val();
+    const raw = snap.val();
+    let datos = typeof raw === "string" ? JSON.parse(raw) : raw;
     if (datos && typeof datos === "object" && !Array.isArray(datos)) {
       datos = Object.values(datos).filter(v => v && typeof v === "object");
     }
@@ -743,7 +744,7 @@ async function sincronizar() {
 async function guardarNube(clave, datos) {
   if (!dbRef) return;
   try {
-    await dbRef.child(clave).set(datos);
+    await dbRef.child(clave).set(JSON.stringify(datos));
     if (!servidorConectado) {
       servidorConectado = true;
       document.getElementById("syncStatus").textContent = "● Nube";
