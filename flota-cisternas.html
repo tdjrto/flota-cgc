@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Flota CGC">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Flota Cisternas CGC - Control de Estado</title>
+<style>
+  :root {
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --border: #dce2eb;
+    --text: #1e293b;
+    --text-dim: #7a8ba3;
+    --accent: #1565c0;
+    --accent-light: #e3f2fd;
+    --success: #2e7d32;
+    --warning: #ef6c00;
+    --danger: #c62828;
+    --info: #5c6bc0;
+    --header-bg: linear-gradient(135deg, #0d47a1, #1565c0);
+    --row-hover: #f5f8fc;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    background: var(--header-bg);
+    padding: 1.2rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    box-shadow: var(--shadow);
+  }
+  header h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.5px;
+  }
+  header h1 span { color: rgba(255,255,255,0.75); font-weight: 400; font-size: 0.9rem; }
+  .stats-bar {
+    display: flex;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+  }
+  .stat-chip {
+    padding: 0.35rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(4px);
+  }
+  .stat-chip .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .controls {
+    padding: 1rem 2rem;
+    display: flex;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    align-items: center;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  .controls input {
+    padding: 0.55rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.85rem;
+    width: 280px;
+    outline: none;
+    transition: border 0.2s;
+  }
+  .controls input:focus { border-color: var(--accent); }
+  .controls select {
+    padding: 0.55rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.85rem;
+    outline: none;
+    cursor: pointer;
+  }
+  .btn {
+    padding: 0.55rem 1rem;
+    border-radius: 8px;
+    border: 1px solid;
+    background: transparent;
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  .btn-reset { border-color: var(--danger); color: var(--danger); }
+  .btn-reset:hover { background: var(--danger); color: #fff; }
+  .btn-db { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+  .btn-db:hover { background: var(--accent); color: #fff; }
+  .btn-edit-main { border-color: var(--warning); color: var(--warning); }
+  .btn-edit-main:hover:not(:disabled) { background: var(--warning); color: #fff; }
+  .btn-edit-main:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-status { border-color: var(--success); color: var(--success); }
+  .btn-status:hover:not(:disabled) { background: var(--success); color: #fff; }
+  .btn-status:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-export { border-color: var(--info); color: var(--info); }
+  .btn-export:hover { background: var(--info); color: #fff; }
+  .btn-image { border-color: #7b1fa2; color: #7b1fa2; }
+  .btn-image:hover { background: #7b1fa2; color: #fff; }
+  .btn-add { border-color: var(--success); color: var(--success); }
+  .btn-add:hover { background: var(--success); color: #fff; }
+  .table-wrap {
+    flex: 1;
+    overflow: auto;
+    padding: 1rem 2rem 1rem;
+  }
+  .table-wrap table { box-shadow: var(--shadow); border-radius: 8px; overflow: hidden; }
+  .table-wrap thead th { z-index: 5; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  thead th {
+    background: #0d47a1;
+    color: #fff;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.8px;
+    padding: 0.8rem 0.7rem;
+    text-align: left;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    white-space: nowrap;
+  }
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+  tbody tr:hover { background: var(--row-hover); }
+  tbody tr.selected { background: #e3f2fd; border-left: 3px solid var(--accent); }
+  tbody td {
+    padding: 0.65rem 0.7rem;
+    vertical-align: middle;
+  }
+  .placa {
+    font-weight: 700;
+    color: var(--text);
+    font-size: 0.85rem;
+  }
+  .conductor { color: var(--text); font-weight: 500; }
+  .cist-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 26px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.78rem;
+    background: #e8eaf6;
+    color: var(--info);
+  }
+  .dotacion-tag {
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .dotacion-sop { background: #fff3e0; color: #e65100; }
+  .dotacion-senc { background: #eceff1; color: #546e7a; }
+  .obs-cell {
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .status-select {
+    display: inline-block;
+    padding: 0.3rem 0.7rem;
+    border-radius: 6px;
+    border: 2px solid;
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .st-cargando    { border-color: #2e7d32; color: #2e7d32; background: #e8f5e9; }
+  .st-precargado  { border-color: #ef6c00; color: #ef6c00; background: #fff3e0; }
+  .st-cargado     { border-color: #546e7a; color: #546e7a; background: #eceff1; }
+  .st-nodisp      { border-color: #c62828; color: #c62828; background: #ffebee; }
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    padding: 0.8rem 1.5rem;
+    border-radius: 10px;
+    background: var(--success);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.85rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 200;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .no-results {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-dim);
+    font-size: 1rem;
+  }
+  .last-change {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-top: 0.2rem;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 100;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 3vh 1rem;
+    overflow-y: auto;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 950px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.2rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: #f8fafc;
+    border-radius: 16px 16px 0 0;
+  }
+  .modal-header h2 {
+    font-size: 1.1rem;
+    color: var(--accent);
+  }
+  .modal-close {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+  .modal-close:hover { background: var(--danger); color: #fff; }
+  .modal-body {
+    padding: 1.5rem;
+    overflow-x: auto;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+
+  /* Form inside modal */
+  .db-form {
+    display: none;
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem;
+    margin-bottom: 1rem;
+  }
+  .db-form.active { display: block; }
+  .db-form h3 {
+    font-size: 0.9rem;
+    color: var(--accent);
+    margin-bottom: 0.8rem;
+  }
+  .form-row {
+    display: flex;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.8rem;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    flex: 1;
+    min-width: 160px;
+  }
+  .form-group label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+  }
+  .form-group input, .form-group select {
+    padding: 0.5rem 0.8rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 0.85rem;
+    outline: none;
+  }
+  .form-group input:focus, .form-group select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(21,101,192,0.15);
+  }
+  .form-btns {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 0.5rem;
+  }
+  .btn-save {
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    border: none;
+    background: var(--success);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-save:hover { filter: brightness(1.15); }
+  .btn-cancel {
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-cancel:hover { border-color: var(--text); color: var(--text); }
+
+  /* DB table */
+  .db-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  .db-table th {
+    background: #0d47a1;
+    color: #fff;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+    padding: 0.7rem 0.6rem;
+    text-align: left;
+  }
+  .db-table td {
+    padding: 0.55rem 0.6rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .db-table tr:hover { background: var(--row-hover); }
+  .db-actions {
+    display: flex;
+    gap: 0.4rem;
+  }
+  .btn-icon {
+    width: 30px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid;
+    background: transparent;
+    cursor: pointer;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .btn-edit { border-color: var(--warning); color: var(--warning); }
+  .btn-edit:hover { background: var(--warning); color: var(--bg); }
+  .btn-del { border-color: var(--danger); color: var(--danger); }
+  .btn-del:hover { background: var(--danger); color: #fff; }
+
+  @media (max-width: 900px) {
+    header { padding: 1rem; }
+    .table-wrap { padding: 0.5rem; }
+    .controls { padding: 0.8rem 1rem; }
+    .controls input { width: 100%; }
+    .modal { max-width: 100%; margin: 0; border-radius: 0; min-height: 100vh; }
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+
+<header>
+  <h1>🚛 Flota Cisternas CGC <span>| Control de Estado</span></h1>
+  <div class="stats-bar" id="statsBar"></div>
+  <span id="syncStatus" style="font-size:0.7rem;font-weight:600;padding:0.3rem 0.7rem;border-radius:12px;background:rgba(255,255,255,0.1);color:#94a3b8;white-space:nowrap">○ Conectando...</span>
+</header>
+
+<div class="controls">
+  <button class="btn btn-edit-main" id="btnEditarSeleccion" onclick="openEditFleetModal()" disabled>✏️ Editar seleccionado</button>
+  <button class="btn btn-status" id="btnActualizarEstado" onclick="openStatusModal()" disabled>🔄 Actualizar estado seleccionado</button>
+  <button class="btn btn-export" onclick="exportToExcel()">📥 Exportar a Excel</button>
+  <button class="btn btn-image" onclick="exportarImagen()">🖼️ Exportar Imagen</button>
+  <button class="btn btn-db" onclick="openDBModal()">🗄️ Asignación de Cisternas</button>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>No.</th>
+        <th>Placa Cabezal</th>
+        <th>Placa Remolque</th>
+        <th>Cisterna</th>
+        <th>Ejes</th>
+        <th>Conductor</th>
+        <th>Dotación</th>
+        <th>Estado</th>
+        <th>Observación</th>
+        <th>Asignación</th>
+      </tr>
+    </thead>
+    <tbody id="flotaBody"></tbody>
+  </table>
+  <div class="no-results" id="noResults" style="display:none;">No se encontraron vehículos con ese filtro.</div>
+</div>
+
+<!-- Modal Base de Datos -->
+<div class="modal-overlay" id="dbModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>🗄️ Asignación de Cisternas</h2>
+      <button class="modal-close" onclick="closeDBModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-actions">
+        <button class="btn btn-add" onclick="showAddForm()">+ Agregar Vehículo</button>
+      </div>
+
+      <div class="db-form" id="dbForm">
+        <h3 id="formTitle">Agregar vehículo</h3>
+        <input type="hidden" id="formEditId" value="">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Placa Cabezal</label>
+            <input type="text" id="formCabezal" placeholder="Ej: TCH-7314" maxlength="10" style="text-transform:uppercase">
+          </div>
+          <div class="form-group">
+            <label>Placa Remolque</label>
+            <input type="text" id="formRemolque" placeholder="Ej: TRA-2553" maxlength="10" style="text-transform:uppercase">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nombre del Conductor</label>
+            <input type="text" id="formConductor" placeholder="Nombre completo">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="max-width:120px">
+            <label>Cisterna Asignada</label>
+            <input type="text" id="formCisterna" placeholder="Ej: A01" maxlength="4" style="text-transform:uppercase">
+          </div>
+          <div class="form-group" style="max-width:120px">
+            <label># Ejes</label>
+            <select id="formEjes">
+              <option value="2">2</option>
+              <option value="3">3</option>
+            </select>
+          </div>
+          <div class="form-group" style="max-width:150px">
+            <label>Dotación</label>
+            <select id="formDotacion">
+              <option value="SENCILLO">SENCILLO</option>
+              <option value="SOPLADOR">SOPLADOR</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Propietario</label>
+            <input type="text" id="formPropietario" placeholder="Nombre del propietario">
+          </div>
+        </div>
+        <div class="form-btns">
+          <button class="btn-save" onclick="saveVehicle()">Guardar</button>
+          <button class="btn-cancel" onclick="hideForm()">Cancelar</button>
+        </div>
+      </div>
+
+      <table class="db-table">
+        <thead>
+          <tr>
+            <th>No.</th>
+            <th>Placa Cabezal</th>
+            <th>Placa Remolque</th>
+            <th>Cisterna</th>
+            <th>Ejes</th>
+            <th>Conductor</th>
+            <th>Dotación</th>
+            <th>Propietario</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="dbBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Flota -->
+<div class="modal-overlay" id="editFleetModal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <h2>✏️ Editar vehículo</h2>
+      <button class="modal-close" onclick="closeEditFleetModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editFleetId" value="">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Placa Cabezal</label>
+          <input type="text" id="editFleetCabezal" style="text-transform:uppercase">
+        </div>
+        <div class="form-group">
+          <label>Placa Remolque</label>
+          <input type="text" id="editFleetRemolque" style="text-transform:uppercase">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="max-width:120px">
+          <label>Cisterna</label>
+          <input type="text" id="editFleetCist" maxlength="4" style="text-transform:uppercase">
+        </div>
+        <div class="form-group" style="max-width:100px">
+          <label># Ejes</label>
+          <select id="editFleetEjes">
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </div>
+        <div class="form-group" style="max-width:150px">
+          <label>Dotación</label>
+          <select id="editFleetDotacion">
+            <option value="SENCILLO">SENCILLO</option>
+            <option value="SOPLADOR">SOPLADOR</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Conductor</label>
+          <input type="text" id="editFleetConductor">
+        </div>
+      </div>
+      <div class="form-btns" style="margin-top:1rem">
+        <button class="btn-save" onclick="saveEditFleet()">Guardar cambios</button>
+        <button class="btn-cancel" onclick="closeEditFleetModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Actualizar Estado -->
+<div class="modal-overlay" id="statusModal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h2>🔄 Actualizar estado</h2>
+      <button class="modal-close" onclick="closeStatusModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="statusFleetId" value="">
+          <p id="statusVehicleInfo" style="color:var(--text-dim);font-size:0.85rem;margin-bottom:1rem;padding:0.5rem 0.8rem;background:#f8fafc;border-radius:6px;border:1px solid var(--border)"></p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nuevo estado</label>
+          <select id="statusSelect" style="padding:0.55rem 0.8rem;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:0.85rem;font-weight:700">
+            <option value="A CARGA">A CARGA</option>
+            <option value="PRECARGADO">PRECARGADO</option>
+            <option value="CARGADO">CARGADO</option>
+            <option value="NO DISPONIBLE">NO DISPONIBLE</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Fecha</label>
+          <input type="date" id="statusFecha" style="padding:0.55rem 0.8rem;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:0.85rem;width:100%">
+        </div>
+        <div class="form-group">
+          <label>Hora</label>
+          <input type="text" id="statusHora" placeholder="Ej: 14:30" maxlength="5" style="padding:0.55rem 0.8rem;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:0.85rem;width:100%">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Observación</label>
+          <textarea id="statusObs" rows="3" placeholder="Detalle de la observación..." style="padding:0.55rem 0.8rem;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:0.85rem;width:100%;resize:vertical;font-family:inherit"></textarea>
+        </div>
+      </div>
+      <div class="form-btns" style="margin-top:1rem">
+        <button class="btn-save" onclick="saveStatusUpdate()">Guardar estado</button>
+        <button class="btn-cancel" onclick="closeStatusModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ESTADOS = ["A CARGA", "PRECARGADO", "CARGADO", "NO DISPONIBLE"];
+
+/* ========== DATOS DEFAULT PAGINA PRINCIPAL ========== */
+const defaultFleet = [
+  { id:1,  cabezal:"HAY-6574", remolque:"TRA-2552", cist:"A03", ejes:3, conductor:"MERCEDES JIRON GARCIA", dotacion:"SOPLADOR", estado:"A CARGA", obs:"Vacio de Construmarket CHO" },
+  { id:2,  cabezal:"TCH-7419", remolque:"TRA-2542", cist:"A02", ejes:3, conductor:"NELSY FRANCISCO AGUILAR VELASQUEZ", dotacion:"SOPLADOR", estado:"A CARGA", obs:"Vacio de El Tablon" },
+  { id:3,  cabezal:"JAS-0033", remolque:"TRA-2556", cist:"A01", ejes:3, conductor:"DOROTEO HERNANDEZ CASTRO", dotacion:"SENCILLO", estado:"A CARGA", obs:"Vacio de El Tablon" },
+  { id:4,  cabezal:"JAS-2215", remolque:"TRA-2547", cist:"A16", ejes:2, conductor:"NELSY FRANCISCO AGUILAR MARTINEZ", dotacion:"SOPLADOR", estado:"A CARGA", obs:"Vacio de INCAL" },
+  { id:5,  cabezal:"HCO-7419", remolque:"TRA-2560", cist:"A15", ejes:2, conductor:"WILMER LEONEL AGUILAR VELASQUEZ", dotacion:"SENCILLO", estado:"A CARGA", obs:"Salio del Taller" },
+  { id:6,  cabezal:"JAS-1758", remolque:"TRA-2544", cist:"A13", ejes:2, conductor:"JOSE RAMON MACHADO MALDONADO", dotacion:"SENCILLO", estado:"A CARGA", obs:"Vacio de El Zamorano" },
+  { id:7,  cabezal:"JAD-4366", remolque:"TRA-2550", cist:"A08", ejes:2, conductor:"CARLOS ARIEL LAGOS MEJIA", dotacion:"SENCILLO", estado:"A CARGA", obs:"Vacio de El Zamorano" },
+  { id:8,  cabezal:"TCH-7439", remolque:"TRA-2555", cist:"A05", ejes:2, conductor:"JOSE LUIS HERNANDEZ CASTELLANOS", dotacion:"SENCILLO", estado:"PRECARGADO", obs:"" },
+  { id:9,  cabezal:"TCH-7231", remolque:"TRA-2541", cist:"A04", ejes:3, conductor:"EDWIN NOEL MARCIA MARTINEZ", dotacion:"SENCILLO", estado:"CARGADO", obs:"Descarga en Pega Morteros" },
+  { id:10, cabezal:"TCH-7044", remolque:"TRA-2551", cist:"A11", ejes:2, conductor:"ABEL MAYES TURCIOS", dotacion:"SENCILLO", estado:"CARGADO", obs:"Descarga en El Zamorano" },
+  { id:11, cabezal:"JAQ-3305", remolque:"TRA-2554", cist:"A18", ejes:2, conductor:"RAFAEL RODRIGUEZ ZUNIGA", dotacion:"SENCILLO", estado:"CARGADO", obs:"Descarga en El Zamorano" },
+  { id:12, cabezal:"JAD-0599", remolque:"TRA-2549", cist:"A19", ejes:2, conductor:"OMAR ANTONIO CASTILLO BONILLA", dotacion:"SENCILLO", estado:"CARGADO", obs:"Descarga en Construmarket TGU" },
+  { id:13, cabezal:"TCH-7322", remolque:"TRA-2545", cist:"A17", ejes:2, conductor:"FRAY PRUDENCIO NOLASCO REYES", dotacion:"SENCILLO", estado:"CARGADO", obs:"Descarga en Construmarket TGU" },
+  { id:14, cabezal:"JDH-5459", remolque:"TRA-2543", cist:"A09", ejes:2, conductor:"JORGE ALBERTO REYES GARCIA", dotacion:"SENCILLO", estado:"CARGADO", obs:"Descarga en El Zamorano" },
+  { id:15, cabezal:"TCH-7314", remolque:"TRA-2546", cist:"A12", ejes:2, conductor:"ADALBERTO GUTIERREZ VARELA", dotacion:"SENCILLO", estado:"CARGADO", obs:"Descarga en El Zamorano" },
+  { id:16, cabezal:"TCA-0051", remolque:"TRA-2553", cist:"A14", ejes:2, conductor:"ELVIN ARTURO ORDOÑEZ VARELA", dotacion:"SENCILLO", estado:"NO DISPONIBLE", obs:"A espera de que se autorice (falta correlativo)" },
+  { id:17, cabezal:"HCO-7418", remolque:"TRA-2548", cist:"A07", ejes:2, conductor:"JULIO CESAR LAGOS ZUNIGA", dotacion:"SENCILLO", estado:"NO DISPONIBLE", obs:"Cambio de soportes de motor" }
+];
+
+/* ========== DATOS DEFAULT BASE DE DATOS ========== */
+const defaultDB = [
+  { id:1,  cabezal:"HAY-6574", remolque:"TRA-2552", cist:"A03", ejes:3, conductor:"MERCEDES JIRON GARCIA", dotacion:"SOPLADOR", propietario:"PABLO GONZALEZ" },
+  { id:2,  cabezal:"TCH-7419", remolque:"TRA-2542", cist:"A02", ejes:3, conductor:"NELSY FRANCISCO AGUILAR VELASQUEZ", dotacion:"SOPLADOR", propietario:"PABLO GONZALEZ" },
+  { id:3,  cabezal:"JAS-0033", remolque:"TRA-2556", cist:"A01", ejes:3, conductor:"DOROTEO HERNANDEZ CASTRO", dotacion:"SENCILLO", propietario:"PABLO GONZALEZ" },
+  { id:4,  cabezal:"JAS-2215", remolque:"TRA-2547", cist:"A16", ejes:2, conductor:"NELSY FRANCISCO AGUILAR MARTINEZ", dotacion:"SOPLADOR", propietario:"EDUARDO CACERES" },
+  { id:5,  cabezal:"HCO-7419", remolque:"TRA-2560", cist:"A15", ejes:2, conductor:"WILMER LEONEL AGUILAR VELASQUEZ", dotacion:"SENCILLO", propietario:"GENESIS CACERES" },
+  { id:6,  cabezal:"JAS-1758", remolque:"TRA-2544", cist:"A13", ejes:2, conductor:"JOSE RAMON MACHADO MALDONADO", dotacion:"SENCILLO", propietario:"PABLO GONZALEZ" },
+  { id:7,  cabezal:"JAD-4366", remolque:"TRA-2550", cist:"A08", ejes:2, conductor:"CARLOS ARIEL LAGOS MEJIA", dotacion:"SENCILLO", propietario:"ABEL MAYES" },
+  { id:8,  cabezal:"TCH-7439", remolque:"TRA-2555", cist:"A05", ejes:2, conductor:"JOSE LUIS HERNANDEZ CASTELLANOS", dotacion:"SENCILLO", propietario:"JOSE LUIS HERNANDEZ" },
+  { id:9,  cabezal:"TCH-7231", remolque:"TRA-2541", cist:"A04", ejes:3, conductor:"EDWIN NOEL MARCIA MARTINEZ", dotacion:"SENCILLO", propietario:"FRANCISCO CASTILLO" },
+  { id:10, cabezal:"TCH-7044", remolque:"TRA-2551", cist:"A11", ejes:2, conductor:"ABEL MAYES TURCIOS", dotacion:"SENCILLO", propietario:"ABEL MAYES TURCIOS" },
+  { id:11, cabezal:"JAQ-3305", remolque:"TRA-2554", cist:"A18", ejes:2, conductor:"RAFAEL RODRIGUEZ ZUNIGA", dotacion:"SENCILLO", propietario:"AMBROCIO GARCIA" },
+  { id:12, cabezal:"JAD-0599", remolque:"TRA-2549", cist:"A19", ejes:2, conductor:"OMAR ANTONIO CASTILLO BONILLA", dotacion:"SENCILLO", propietario:"PABLO GONZALEZ" },
+  { id:13, cabezal:"TCH-7322", remolque:"TRA-2545", cist:"A17", ejes:2, conductor:"FRAY PRUDENCIO NOLASCO REYES", dotacion:"SENCILLO", propietario:"JUNIOR POSADAS" },
+  { id:14, cabezal:"JDH-5459", remolque:"TRA-2543", cist:"A09", ejes:2, conductor:"JORGE ALBERTO REYES GARCIA", dotacion:"SENCILLO", propietario:"ALEJANDRO GONZALEZ" },
+  { id:15, cabezal:"TCH-7314", remolque:"TRA-2546", cist:"A12", ejes:2, conductor:"ADALBERTO GUTIERREZ VARELA", dotacion:"SENCILLO", propietario:"AMBROCIO GARCIA" },
+  { id:16, cabezal:"TCA-0051", remolque:"TRA-2553", cist:"A14", ejes:2, conductor:"ELVIN ARTURO ORDOÑEZ VARELA", dotacion:"SENCILLO", propietario:"AMBROCIO GARCIA" },
+  { id:17, cabezal:"HCO-7418", remolque:"TRA-2548", cist:"A07", ejes:2, conductor:"JULIO CESAR LAGOS ZUNIGA", dotacion:"SENCILLO", propietario:"LETICIA GONZALEZ" }
+];
+
+/* ========== CONFIGURACION FIREBASE ========== */
+const firebaseConfig = {
+  apiKey: "AIzaSyBfFCJQ97EXhrKzrGISkBnWmzXR8fKsxFY",
+  authDomain: "flota-cisternas-cgc.firebaseapp.com",
+  databaseURL: "https://flota-cisternas-cgc-default-rtdb.firebaseio.com",
+  projectId: "flota-cisternas-cgc",
+  storageBucket: "flota-cisternas-cgc.firebasestorage.app",
+  messagingSenderId: "539044950597",
+  appId: "1:539044950597:web:3a98f5ad57d4a12c76a92c"
+};
+
+let dbRef = null;
+try {
+  firebase.initializeApp(firebaseConfig);
+  dbRef = firebase.database().ref();
+} catch(e) { dbRef = null; }
+
+let servidorConectado = false;
+
+async function sincronizar() {
+  if (!dbRef) return;
+  try {
+    const snap = await dbRef.child("flota").once("value");
+    const datos = snap.val();
+    if (Array.isArray(datos) && datos.length > 0) {
+      localStorage.setItem("flota_main_fleet", JSON.stringify(datos));
+      fleetData = datos;
+    }
+    servidorConectado = true;
+    document.getElementById("syncStatus").textContent = "● Nube";
+    document.getElementById("syncStatus").style.color = "#2e7d32";
+  } catch(e) {
+    servidorConectado = false;
+    document.getElementById("syncStatus").textContent = "○ Local";
+    document.getElementById("syncStatus").style.color = "#94a3b8";
+  }
+}
+
+async function guardarNube(clave, datos) {
+  if (!dbRef) return;
+  try {
+    await dbRef.child(clave).set(datos);
+    if (!servidorConectado) {
+      servidorConectado = true;
+      document.getElementById("syncStatus").textContent = "● Nube";
+      document.getElementById("syncStatus").style.color = "#2e7d32";
+    }
+  } catch(e) {
+    servidorConectado = false;
+    document.getElementById("syncStatus").textContent = "○ Local";
+    document.getElementById("syncStatus").style.color = "#94a3b8";
+  }
+}
+
+function loadFleet() {
+  const s = localStorage.getItem("flota_main_fleet");
+  if (s) { try { return JSON.parse(s); } catch(e) {} }
+  return JSON.parse(JSON.stringify(defaultFleet));
+}
+function saveFleet(f) {
+  localStorage.setItem("flota_main_fleet", JSON.stringify(f));
+  guardarNube("flota", f);
+}
+
+let fleetData = loadFleet();
+saveFleet(fleetData);
+
+function formatearFecha(f) {
+  if (!f) return '';
+  const p = f.split('-');
+  if (p.length === 3) return `${p[2]}/${p[1]}/${p[0]}`;
+  return f;
+}
+function formatearHora(h) {
+  if (!h) return '';
+  if (h.toUpperCase().includes('AM') || h.toUpperCase().includes('PM')) return h;
+  const p = h.split(':');
+  let hora = parseInt(p[0], 10);
+  if (isNaN(hora)) return h;
+  const ampm = hora >= 12 ? 'PM' : 'AM';
+  if (hora === 0) hora = 12;
+  else if (hora > 12) hora = hora - 12;
+  const min = p[1] ? p[1].substring(0, 2) : '00';
+  return `${hora}:${min} ${ampm}`;
+}
+function getVehicleStatus(v) {
+  if (v.estado && ESTADOS.includes(v.estado)) return v.estado;
+  return "A CARGA";
+}
+
+function setVehicleStatus(id, newStatus) {
+  const v = fleetData.find(x => x.id === id);
+  if (v) {
+    v.estado = newStatus;
+    v.lastChange = new Date().toLocaleString("es-HN");
+    saveFleet(fleetData);
+  }
+}
+
+function getStatusClass(estado) {
+  const map = { "A CARGA":"st-cargando", "PRECARGADO":"st-precargado", "CARGADO":"st-cargado", "NO DISPONIBLE":"st-nodisp" };
+  return map[estado] || "";
+}
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2500);
+}
+
+function updateStats() {
+  const counts = {};
+  ESTADOS.forEach(e => counts[e] = 0);
+  fleetData.forEach(v => { counts[getVehicleStatus(v)]++; });
+  const bar = document.getElementById("statsBar");
+  const colors = { "A CARGA":"#16a34a", "PRECARGADO":"#f97316", "CARGADO":"#e2e8f0", "NO DISPONIBLE":"#ef4444" };
+  bar.innerHTML = ESTADOS.map(e =>
+    `<div class="stat-chip" style="background:${colors[e]}15;color:${colors[e]}">
+      <span class="dot" style="background:${colors[e]}"></span>${e}: ${counts[e]}
+    </div>`
+  ).join("");
+}
+
+function exportToExcel() {
+  const headers = ["No.","Placa Cabezal","Placa Remolque","Cisterna","Ejes","Conductor","Dotación","Estado","Observación"];
+  const estadoOrder = { "A CARGA": 0, "PRECARGADO": 1, "CARGADO": 2, "NO DISPONIBLE": 3 };
+  const sorted = [...fleetData].sort((a, b) => {
+    const orderA = estadoOrder[getVehicleStatus(a)] ?? 99;
+    const orderB = estadoOrder[getVehicleStatus(b)] ?? 99;
+    if (orderA !== orderB) return orderA - orderB;
+    const fa = a.fechaCambio && a.horaCambio ? a.fechaCambio + "T" + a.horaCambio : a.fechaCambio || "";
+    const fb = b.fechaCambio && b.horaCambio ? b.fechaCambio + "T" + b.horaCambio : b.fechaCambio || "";
+    if (fa && fb) return fa.localeCompare(fb);
+    if (fa) return -1;
+    if (fb) return 1;
+    return 0;
+  });
+  const rows = sorted.map((v, i) => [
+    i + 1,
+    v.cabezal,
+    v.remolque,
+    v.cist,
+    v.ejes,
+    v.conductor,
+    v.dotacion,
+    getVehicleStatus(v),
+    v.obs || ""
+  ]);
+  const esc = (val) => '"' + String(val).replace(/"/g, '""') + '"';
+  const csv = [headers.map(esc).join(";"), ...rows.map(r => r.map(esc).join(";"))].join("\n");
+  const BOM = "\uFEFF";
+  const blob = new Blob([BOM + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "Flota_Cisternas_CGC.csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast("📥 Archivo exportado correctamente");
+}
+
+function exportarImagen() {
+  if (!window.html2canvas) { showToast("Librería no cargada, intentá de nuevo", "error"); return; }
+  const estadoOrder = { "A CARGA": 0, "PRECARGADO": 1, "CARGADO": 2, "NO DISPONIBLE": 3 };
+  const sorted = [...fleetData].sort((a, b) => {
+    const orderA = estadoOrder[getVehicleStatus(a)] ?? 99;
+    const orderB = estadoOrder[getVehicleStatus(b)] ?? 99;
+    if (orderA !== orderB) return orderA - orderB;
+    return (a.cist || '').localeCompare(b.cist || '');
+  });
+  const tabla = document.getElementById("flotaBody");
+  if (!tabla || tabla.rows.length === 0) { showToast("No hay datos para exportar", "error"); return; }
+  const contenedor = document.createElement("div");
+  contenedor.style.cssText = "position:absolute;left:-9999px;top:0;background:#fff;padding:16px;font-family:'Segoe UI',sans-serif;";
+  document.body.appendChild(contenedor);
+  const clone = document.createElement("table");
+  clone.style.cssText = "border-collapse:collapse;width:100%;font-size:13px;";
+  const theadClone = document.createElement("thead");
+  theadClone.innerHTML = `<tr style="background:#0d47a1;color:#fff;">
+    <th style="padding:10px 12px;text-align:left;text-transform:uppercase;font-size:11px;letter-spacing:0.5px;">No.</th>
+    <th style="padding:10px 12px;text-align:left;text-transform:uppercase;font-size:11px;letter-spacing:0.5px;">Placa Cabezal</th>
+    <th style="padding:10px 12px;text-align:left;text-transform:uppercase;font-size:11px;letter-spacing:0.5px;">Placa Remolque</th>
+    <th style="padding:10px 12px;text-align:left;text-transform:uppercase;font-size:11px;letter-spacing:0.5px;">Cisterna</th>
+    <th style="padding:10px 12px;text-align:center;text-transform:uppercase;font-size:11px;letter-spacing:0.5px;">Ejes</th>
+    <th style="padding:10px 12px;text-align:left;text-transform:uppercase;font-size:11px;letter-spacing:0.5px;">Conductor</th>
+    <th style="padding:10px 12px;text-align:left;text-transform:uppercase;font-size:11px;letter-spacing:0.5px;">Dotación</th>
+    <th style="padding:10px 12px;text-align:left;text-transform:uppercase;font-size:11px;letter-spacing:0.5px;">Estado</th>
+    <th style="padding:10px 12px;text-align:left;text-transform:uppercase;font-size:11px;letter-spacing:0.5px;">Observación</th>
+  </tr>`;
+  clone.appendChild(theadClone);
+  const tbodyClone = document.createElement("tbody");
+  sorted.forEach((v, i) => {
+    const st = getVehicleStatus(v);
+    const stColors = { "A CARGA":"color:#2e7d32;font-weight:700", "PRECARGADO":"color:#ef6c00;font-weight:700", "CARGADO":"color:#546e7a;font-weight:700", "NO DISPONIBLE":"color:#c62828;font-weight:700" };
+    const stColor = stColors[st] || "color:#333";
+    const bgColor = i % 2 === 0 ? "#fff" : "#f5f8fc";
+    tbodyClone.innerHTML += `<tr style="background:${bgColor};border-bottom:1px solid #dce2eb;">
+      <td style="padding:8px 12px;color:#7a8ba3;font-weight:600;">${i+1}</td>
+      <td style="padding:8px 12px;font-weight:700;">${v.cabezal}</td>
+      <td style="padding:8px 12px;font-weight:700;">${v.remolque}</td>
+      <td style="padding:8px 12px;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:26px;border-radius:6px;font-weight:700;background:#e8eaf6;color:#5c6bc0;font-size:12px;">${v.cist}</span>
+      </td>
+      <td style="padding:8px 12px;text-align:center;font-weight:700;">${v.ejes}</td>
+      <td style="padding:8px 12px;font-weight:500;">
+        ${v.conductor}
+        ${v.fechaCambio ? `<div style="font-size:10px;color:#94a3b8;margin-top:2px;">Actualizacion: ${formatearFecha(v.fechaCambio)}${v.horaCambio ? ' ' + formatearHora(v.horaCambio) : ''}</div>` : ''}
+      </td>
+      <td style="padding:8px 12px;">
+        <span style="padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;text-transform:uppercase;${v.dotacion === 'SOPLADOR' ? 'background:#fff3e0;color:#e65100' : 'background:#eceff1;color:#546e7a'}">${v.dotacion}</span>
+      </td>
+      <td style="padding:8px 12px;${stColor}">${st}</td>
+      <td style="padding:8px 12px;color:#7a8ba3;font-size:12px;max-width:250px;">${v.obs || '—'}</td>
+    </tr>`;
+  });
+  clone.appendChild(tbodyClone);
+  const titulo = document.createElement("div");
+  titulo.style.cssText = "font-size:18px;font-weight:700;color:#0d47a1;margin-bottom:12px;padding:0 4px;";
+  titulo.textContent = "🚛 Flota Cisternas CGC - Control de Estado";
+  contenedor.appendChild(titulo);
+  contenedor.appendChild(clone);
+  const fechaHora = document.createElement("div");
+  fechaHora.style.cssText = "font-size:11px;color:#94a3b8;margin-top:8px;text-align:right;padding:0 4px;";
+  fechaHora.textContent = `Generado: ${new Date().toLocaleString("es-HN")}`;
+  contenedor.appendChild(fechaHora);
+  html2canvas(contenedor, { scale: 2, useCORS: true, backgroundColor: "#fff" }).then(canvas => {
+    const link = document.createElement("a");
+    link.download = "Flota_Cisternas_CGC.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+    document.body.removeChild(contenedor);
+    showToast("🖼️ Imagen exportada correctamente");
+  }).catch(err => {
+    document.body.removeChild(contenedor);
+    showToast("Error al generar la imagen", "error");
+    console.error(err);
+  });
+}
+
+let selectedFleetId = null;
+
+function renderTable() {
+  const tbody = document.getElementById("flotaBody");
+  const noRes = document.getElementById("noResults");
+  const estadoOrder = { "A CARGA": 0, "PRECARGADO": 1, "CARGADO": 2, "NO DISPONIBLE": 3 };
+
+  let filtered = [...fleetData].sort((a, b) => {
+    const orderA = estadoOrder[getVehicleStatus(a)] ?? 99;
+    const orderB = estadoOrder[getVehicleStatus(b)] ?? 99;
+    if (orderA !== orderB) return orderA - orderB;
+    const fa = a.fechaCambio && a.horaCambio ? a.fechaCambio + "T" + a.horaCambio : a.fechaCambio || "";
+    const fb = b.fechaCambio && b.horaCambio ? b.fechaCambio + "T" + b.horaCambio : b.fechaCambio || "";
+    if (fa && fb) return fa.localeCompare(fb);
+    if (fa) return -1;
+    if (fb) return 1;
+    return 0;
+  });
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = "";
+    noRes.style.display = "block";
+    updateStats();
+    return;
+  }
+  noRes.style.display = "none";
+
+  tbody.innerHTML = filtered.map((v, i) => {
+    const st = getVehicleStatus(v);
+    const stClass = getStatusClass(st);
+    const dotClass = v.dotacion === "SOPLADOR" ? "dotacion-sop" : "dotacion-senc";
+    const asignado = vehicleDB.find(x => x.cist === v.cist);
+    const asignacion = asignado ? asignado.cabezal : '—';
+    const isSelected = selectedFleetId === v.id;
+    return `<tr class="${isSelected ? 'selected' : ''}" onclick="selectFleetRow(${v.id})">
+      <td style="color:var(--text-dim);font-weight:600">${i+1}</td>
+      <td><span class="placa">${v.cabezal}</span></td>
+      <td><span class="placa">${v.remolque}</span></td>
+      <td><span class="cist-num">${v.cist}</span></td>
+      <td style="text-align:center;font-weight:700">${v.ejes}</td>
+      <td>
+        <span class="conductor">${v.conductor}</span>
+        ${v.fechaCambio ? `<div class="last-change">Actualizacion: ${formatearFecha(v.fechaCambio)}${v.horaCambio ? ' ' + formatearHora(v.horaCambio) : ''}</div>` : ''}
+      </td>
+      <td><span class="dotacion-tag ${dotClass}">${v.dotacion}</span></td>
+      <td><span class="status-select ${stClass}">${st}</span></td>
+      <td><span class="obs-cell" title="${v.obs || ''}">${v.obs || '—'}</span></td>
+      <td><span class="placa" style="color:var(--accent)">${asignacion}</span></td>
+    </tr>`;
+  }).join("");
+  updateStats();
+}
+
+function changeStatus(id, newStatus) {
+  const v = fleetData.find(x => x.id === id);
+  if (!v) return;
+  const oldSt = getVehicleStatus(v);
+  if (oldSt !== newStatus) {
+    setVehicleStatus(id, newStatus);
+    renderTable();
+    showToast(`✅ ${v.cabezal} (${v.cist}): ${oldSt} → ${newStatus}`);
+  }
+}
+
+function selectFleetRow(id) {
+  selectedFleetId = selectedFleetId === id ? null : id;
+  document.getElementById("btnEditarSeleccion").disabled = selectedFleetId === null;
+  document.getElementById("btnActualizarEstado").disabled = selectedFleetId === null;
+  renderTable();
+}
+
+function openEditFleetModal() {
+  const v = fleetData.find(x => x.id === selectedFleetId);
+  if (!v) return;
+  document.getElementById("editFleetId").value = v.id;
+  document.getElementById("editFleetCabezal").value = v.cabezal;
+  document.getElementById("editFleetRemolque").value = v.remolque;
+  document.getElementById("editFleetCist").value = v.cist;
+  document.getElementById("editFleetEjes").value = v.ejes;
+  document.getElementById("editFleetConductor").value = v.conductor;
+  document.getElementById("editFleetDotacion").value = v.dotacion;
+  document.getElementById("editFleetModal").classList.add("active");
+  document.getElementById("editFleetCabezal").focus();
+}
+
+function closeEditFleetModal() {
+  document.getElementById("editFleetModal").classList.remove("active");
+}
+
+function saveEditFleet() {
+  const id = parseInt(document.getElementById("editFleetId").value);
+  const v = fleetData.find(x => x.id === id);
+  if (!v) return;
+  const cabezal = document.getElementById("editFleetCabezal").value.trim().toUpperCase();
+  const remolque = document.getElementById("editFleetRemolque").value.trim().toUpperCase();
+  const cist = document.getElementById("editFleetCist").value.trim().toUpperCase();
+  const ejes = parseInt(document.getElementById("editFleetEjes").value);
+  const conductor = document.getElementById("editFleetConductor").value.trim().toUpperCase();
+  const dotacion = document.getElementById("editFleetDotacion").value;
+  if (!cabezal || !conductor || !cist) {
+    alert("Placa cabezal, conductor y cisterna son obligatorios.");
+    return;
+  }
+  v.cabezal = cabezal;
+  v.remolque = remolque;
+  v.cist = cist;
+  v.ejes = ejes;
+  v.conductor = conductor;
+  v.dotacion = dotacion;
+  saveFleet(fleetData);
+  closeEditFleetModal();
+  renderTable();
+  showToast(`✏️ ${cabezal} (${cist}) actualizado en la flota`);
+}
+
+function openStatusModal() {
+  const v = fleetData.find(x => x.id === selectedFleetId);
+  if (!v) return;
+  document.getElementById("statusFleetId").value = v.id;
+  document.getElementById("statusVehicleInfo").textContent = `${v.cabezal} - ${v.cist} - ${v.conductor}`;
+  document.getElementById("statusSelect").value = getVehicleStatus(v);
+  document.getElementById("statusFecha").value = v.fechaCambio || "";
+  document.getElementById("statusHora").value = v.horaCambio || "";
+  document.getElementById("statusObs").value = v.obs || "";
+  document.getElementById("statusModal").classList.add("active");
+}
+
+function closeStatusModal() {
+  document.getElementById("statusModal").classList.remove("active");
+}
+
+function saveStatusUpdate() {
+  const id = parseInt(document.getElementById("statusFleetId").value);
+  const v = fleetData.find(x => x.id === id);
+  if (!v) return;
+  const newStatus = document.getElementById("statusSelect").value;
+  const fecha = document.getElementById("statusFecha").value;
+  const hora = document.getElementById("statusHora").value.trim();
+  const obs = document.getElementById("statusObs").value.trim();
+  const oldSt = getVehicleStatus(v);
+  v.estado = newStatus;
+  v.fechaCambio = fecha;
+  v.horaCambio = hora;
+  v.obs = obs;
+  v.lastChange = new Date().toLocaleString("es-HN");
+  saveFleet(fleetData);
+  closeStatusModal();
+  renderTable();
+  showToast(`🔄 ${v.cabezal} (${v.cist}): ${oldSt} → ${newStatus}`);
+}
+
+function resetAll() {
+  if (!confirm("¿Restablecer todos los estados a los valores originales?")) return;
+  fleetData = JSON.parse(JSON.stringify(defaultFleet));
+  saveFleet(fleetData);
+  renderTable();
+  showToast("🔄 Flota restablecida a valores originales");
+}
+
+/* ========== BASE DE DATOS -独立 ========== */
+function loadDB() {
+  const s = localStorage.getItem("flota_vehicle_db");
+  if (s) { try { return JSON.parse(s); } catch(e) {} }
+  return JSON.parse(JSON.stringify(defaultDB));
+}
+function saveDB(db) {
+  localStorage.setItem("flota_vehicle_db", JSON.stringify(db));
+  guardarNube("flota", fleetData);
+}
+
+let vehicleDB = loadDB();
+vehicleDB.forEach(v => {
+  if (!v.propietario) {
+    const def = defaultDB.find(d => d.cist === v.cist);
+    v.propietario = def ? def.propietario : "";
+  }
+});
+saveDB(vehicleDB);
+
+function openDBModal() {
+  document.getElementById("dbModal").classList.add("active");
+  renderDBTable();
+}
+function closeDBModal() {
+  document.getElementById("dbModal").classList.remove("active");
+  hideForm();
+  renderTable();
+}
+document.getElementById("dbModal").addEventListener("click", function(e) {
+  if (e.target === this) closeDBModal();
+});
+
+function renderDBTable() {
+  const tbody = document.getElementById("dbBody");
+  if (vehicleDB.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-dim);padding:2rem">No hay vehículos en la base de datos.</td></tr>';
+    return;
+  }
+  const sorted = [...vehicleDB].sort((a, b) => {
+    const na = parseInt(a.cist.replace(/\D/g, '')) || 0;
+    const nb = parseInt(b.cist.replace(/\D/g, '')) || 0;
+    return na - nb;
+  });
+  tbody.innerHTML = sorted.map((v, i) => {
+    const dotClass = v.dotacion === "SOPLADOR" ? "dotacion-sop" : "dotacion-senc";
+    return `<tr>
+      <td style="color:var(--text-dim);font-weight:600">${i+1}</td>
+      <td><span class="placa">${v.cabezal}</span></td>
+      <td><span class="placa">${v.remolque}</span></td>
+      <td><span class="cist-num">${v.cist}</span></td>
+      <td style="text-align:center">${v.ejes}</td>
+      <td><span class="conductor">${v.conductor}</span></td>
+      <td><span class="dotacion-tag ${dotClass}">${v.dotacion}</span></td>
+      <td><span class="conductor">${v.propietario || '—'}</span></td>
+      <td>
+        <div class="db-actions">
+          <button class="btn-icon btn-edit" title="Editar" onclick="editVehicle(${v.id})">✎</button>
+          <button class="btn-icon btn-del" title="Eliminar" onclick="deleteVehicle(${v.id})">✕</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function showAddForm() {
+  document.getElementById("formTitle").textContent = "Agregar vehículo";
+  document.getElementById("formEditId").value = "";
+  document.getElementById("formCabezal").value = "";
+  document.getElementById("formRemolque").value = "";
+  document.getElementById("formConductor").value = "";
+  document.getElementById("formCisterna").value = "";
+  document.getElementById("formEjes").value = "2";
+  document.getElementById("formDotacion").value = "SENCILLO";
+  document.getElementById("formPropietario").value = "";
+  document.getElementById("dbForm").classList.add("active");
+  document.getElementById("formCabezal").focus();
+}
+
+function hideForm() {
+  document.getElementById("dbForm").classList.remove("active");
+}
+
+function editVehicle(id) {
+  const v = vehicleDB.find(x => x.id === id);
+  if (!v) return;
+  document.getElementById("formTitle").textContent = "Editar vehículo";
+  document.getElementById("formEditId").value = v.id;
+  document.getElementById("formCabezal").value = v.cabezal;
+  document.getElementById("formRemolque").value = v.remolque;
+  document.getElementById("formConductor").value = v.conductor;
+  document.getElementById("formCisterna").value = v.cist;
+  document.getElementById("formEjes").value = v.ejes;
+  document.getElementById("formDotacion").value = v.dotacion;
+  document.getElementById("formPropietario").value = v.propietario || "";
+  document.getElementById("dbForm").classList.add("active");
+  document.getElementById("formCabezal").focus();
+}
+
+function saveVehicle() {
+  const cabezal = document.getElementById("formCabezal").value.trim().toUpperCase();
+  const remolque = document.getElementById("formRemolque").value.trim().toUpperCase();
+  const conductor = document.getElementById("formConductor").value.trim().toUpperCase();
+  const cist = document.getElementById("formCisterna").value.trim().toUpperCase();
+  const ejes = parseInt(document.getElementById("formEjes").value);
+  const dotacion = document.getElementById("formDotacion").value;
+  const propietario = document.getElementById("formPropietario").value.trim().toUpperCase();
+  const editId = document.getElementById("formEditId").value;
+
+  if (!cabezal || !conductor || !cist) {
+    alert("Placa cabezal, conductor y cisterna son obligatorios.");
+    return;
+  }
+
+  if (editId) {
+    const v = vehicleDB.find(x => x.id === parseInt(editId));
+    if (v) {
+      v.cabezal = cabezal;
+      v.remolque = remolque;
+      v.conductor = conductor;
+      v.cist = cist;
+      v.ejes = ejes;
+      v.dotacion = dotacion;
+      v.propietario = propietario;
+      saveDB(vehicleDB);
+      showToast(`✏️ ${cabezal} actualizado`);
+    }
+  } else {
+    const maxId = vehicleDB.reduce((m, v) => Math.max(m, v.id), 0);
+    vehicleDB.push({ id: maxId + 1, cabezal, remolque, cist, ejes, conductor, dotacion, propietario });
+    saveDB(vehicleDB);
+    showToast(`➕ ${cabezal} (${cist}) agregado a la asignación de cisternas`);
+  }
+
+  hideForm();
+  renderDBTable();
+  renderTable();
+}
+
+function deleteVehicle(id) {
+  const v = vehicleDB.find(x => x.id === id);
+  if (!v) return;
+  if (!confirm(`¿Eliminar ${v.cabezal} (${v.cist}) - ${v.conductor}?`)) return;
+  vehicleDB = vehicleDB.filter(x => x.id !== id);
+  saveDB(vehicleDB);
+  renderDBTable();
+  renderTable();
+  showToast(`🗑️ ${v.cabezal} eliminado de la asignación de cisternas`);
+}
+
+renderTable();
+sincronizar();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
+</body>
+</html>
