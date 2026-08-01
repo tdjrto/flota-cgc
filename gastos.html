@@ -92,6 +92,7 @@ tr:last-child td { border-bottom: none; }
       <span id="syncStatus" style="font-size:0.75rem;font-weight:600;padding:0.25rem 0.7rem;border-radius:12px;background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);white-space:nowrap">○ Conectando...</span>
     <div class="header-actions">
       <button class="btn btn-success" onclick="agregarGasto()">+ Nuevo Gasto</button>
+      <button class="btn btn-outline" onclick="exportarExcel()">Exportar a Excel</button>
       <button class="btn btn-outline" onclick="exportarCSV()">Descargar CSV</button>
       <button class="btn btn-outline" onclick="document.getElementById('fileInput').click()">Importar CSV</button>
 
@@ -419,6 +420,82 @@ function exportarCSV() {
   a.click();
   URL.revokeObjectURL(url);
   mostrarToast('CSV exportado correctamente', 'success');
+}
+
+function exportarExcel() {
+  if (datos.length === 0) { mostrarToast('No hay datos para exportar', 'error'); return; }
+  const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+  const headers = ['Fecha','Comercio','Factura','Unidad','Placa','Monto','Detalle','Propietario','Total'];
+  const widths = [12, 22, 14, 10, 14, 12, 40, 18, 12];
+
+  let xml = '<?xml version="1.0"?>\n<?mso-application progid="Excel.Sheet"?>\n' +
+    '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' +
+    '<Styles>' +
+    '<Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/></Style>' +
+    '<Style ss:ID="Title"><Font ss:FontName="Calibri" ss:Size="16" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#1B5E20" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>' +
+    '<Style ss:ID="Section"><Font ss:FontName="Calibri" ss:Size="12" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#2E7D32" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>' +
+    '<Style ss:ID="Header"><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#1565C0" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/></Borders></Style>' +
+    '<Style ss:ID="Money"><NumberFormat ss:Format="$#,##0.00"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/></Style>' +
+    '<Style ss:ID="RowAlt"><Interior ss:Color="#F1F8E9" ss:Pattern="Solid"/></Style>' +
+    '<Style ss:ID="Total"><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1"/><Interior ss:Color="#DCEDC8" ss:Pattern="Solid"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/></Style>' +
+    '</Styles>' +
+    '<Worksheet ss:Name="Gastos"><Table>';
+
+  widths.forEach(w => { xml += '<Column ss:Width="' + w + '"/>'; });
+
+  xml += '<Row ss:Height="28"><Cell ss:StyleID="Title" ss:MergeAcross="8"><Data ss:Type="String">REPUESTOS JUNIOR</Data></Cell></Row>';
+  xml += '<Row/>';
+  xml += '<Row/>';
+  xml += '<Row><Cell ss:StyleID="Section" ss:MergeAcross="8"><Data ss:Type="String">CONTRATADOS</Data></Cell></Row>';
+
+  xml += '<Row ss:Height="22">';
+  headers.forEach(h => { xml += '<Cell ss:StyleID="Header"><Data ss:Type="String">' + esc(h) + '</Data></Cell>'; });
+  xml += '</Row>';
+
+  let total = 0;
+  datos.forEach((g, i) => {
+    const alt = i % 2 === 1 ? ' ss:StyleID="RowAlt"' : '';
+    const monto = parseFloat(g.monto) || 0;
+    total += monto;
+    const totalG = (g.total !== undefined && g.total !== '') ? (parseFloat(g.total) || monto) : monto;
+    xml += '<Row' + alt + '>';
+    const celdas = [
+      [g.fecha || '', ""],
+      [g.comercio || '', ""],
+      [g.factura || '', ""],
+      [g.unidad || '', ""],
+      [g.placa || '', ""],
+      [monto, 'Money'],
+      [g.detalle || '', ""],
+      [g.propietario || '', ""],
+      [totalG, 'Money']
+    ];
+    celdas.forEach(([val, estilo]) => {
+      const tipo = estilo === 'Money' ? 'Number' : 'String';
+      const s = estilo ? ' ss:StyleID="' + estilo + '"' : "";
+      xml += '<Cell' + s + '><Data ss:Type="' + tipo + '">' + esc(val) + '</Data></Cell>';
+    });
+    xml += '</Row>';
+  });
+
+  xml += '<Row ss:Height="22">';
+  xml += '<Cell ss:StyleID="Total" ss:MergeAcross="4"><Data ss:Type="String">TOTAL</Data></Cell>';
+  xml += '<Cell ss:StyleID="Money"><Data ss:Type="Number">' + total.toFixed(2) + '</Data></Cell>';
+  xml += '<Cell/>';
+  xml += '<Cell/>';
+  xml += '<Cell ss:StyleID="Money"><Data ss:Type="Number">' + total.toFixed(2) + '</Data></Cell>';
+  xml += '</Row>';
+
+  xml += '</Table></Worksheet></Workbook>';
+
+  const blob = new Blob([xml], { type: "application/vnd.ms-excel;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Ingreso de gastos.xls';
+  a.click();
+  URL.revokeObjectURL(url);
+  mostrarToast('Excel exportado correctamente', 'success');
 }
 
 function importarCSV(event) {

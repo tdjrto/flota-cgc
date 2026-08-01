@@ -837,7 +837,6 @@ function updateStats() {
 }
 
 function exportToExcel() {
-  const headers = ["No.","Placa Cabezal","Placa Remolque","Cisterna","Ejes","Conductor","Dotación","Estado","Observación"];
   const estadoOrder = { "A CARGA": 0, "PRECARGADO": 1, "CARGADO": 2, "NO DISPONIBLE": 3 };
   const sorted = [...fleetData].sort((a, b) => {
     const orderA = estadoOrder[getVehicleStatus(a)] ?? 99;
@@ -850,30 +849,60 @@ function exportToExcel() {
     if (fb) return 1;
     return 0;
   });
-  const rows = sorted.map((v, i) => [
-    i + 1,
-    v.cabezal,
-    v.remolque,
-    v.cist,
-    v.ejes,
-    v.conductor,
-    v.dotacion,
-    getVehicleStatus(v),
-    v.obs || ""
-  ]);
-  const esc = (val) => '"' + String(val).replace(/"/g, '""') + '"';
-  const csv = [headers.map(esc).join(";"), ...rows.map(r => r.map(esc).join(";"))].join("\n");
-  const BOM = "\uFEFF";
-  const blob = new Blob([BOM + csv], { type: "text/csv;charset=utf-8;" });
+
+  const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+  const headers = ["No.","Placa Cabezal","Placa Remolque","Cisterna","Ejes","Conductor","Dotación","Estado","Observación"];
+  const widths = [6, 14, 14, 12, 7, 24, 20, 14, 30];
+
+  let xml = '<?xml version="1.0"?>\n<?mso-application progid="Excel.Sheet"?>\n' +
+    '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' +
+    '<Styles>' +
+    '<Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/></Style>' +
+    '<Style ss:ID="Header"><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#1565C0" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/></Borders></Style>' +
+    '<Style ss:ID="Center"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>' +
+    '<Style ss:ID="RowAlt"><Interior ss:Color="#E3F2FD" ss:Pattern="Solid"/></Style>' +
+    '</Styles>' +
+    '<Worksheet ss:Name="Flota"><Table>';
+
+  widths.forEach(w => { xml += '<Column ss:Width="' + w + '"/>'; });
+
+  xml += '<Row ss:Height="22">';
+  headers.forEach(h => { xml += '<Cell ss:StyleID="Header"><Data ss:Type="String">' + esc(h) + '</Data></Cell>'; });
+  xml += '</Row>';
+
+  sorted.forEach((v, i) => {
+    const alt = i % 2 === 1 ? ' ss:StyleID="RowAlt"' : '';
+    xml += '<Row' + alt + '>';
+    const celdas = [
+      [i + 1, "Number", "Center"],
+      [v.cabezal, "String", ""],
+      [v.remolque, "String", ""],
+      [v.cist, "String", ""],
+      [v.ejes, "String", "Center"],
+      [v.conductor, "String", ""],
+      [v.dotacion, "String", ""],
+      [getVehicleStatus(v), "String", "Center"],
+      [v.obs || "", "String", ""]
+    ];
+    celdas.forEach(([val, tipo, estilo]) => {
+      const s = estilo ? ' ss:StyleID="' + estilo + '"' : "";
+      xml += '<Cell' + s + '><Data ss:Type="' + tipo + '">' + esc(val) + '</Data></Cell>';
+    });
+    xml += '</Row>';
+  });
+
+  xml += '</Table></Worksheet></Workbook>';
+
+  const blob = new Blob([xml], { type: "application/vnd.ms-excel;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "Flota_Cisternas_CGC.csv";
+  a.download = "Flota_Cisternas_CGC.xls";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  showToast("📥 Archivo exportado correctamente");
+  showToast("📥 Excel exportado correctamente");
 }
 
 function exportarImagen() {
