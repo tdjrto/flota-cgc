@@ -218,6 +218,29 @@
   .st-precargado  { border-color: #ef6c00; color: #ef6c00; background: #fff3e0; }
   .st-cargado     { border-color: #546e7a; color: #546e7a; background: #eceff1; }
   .st-nodisp      { border-color: #c62828; color: #c62828; background: #ffebee; }
+  .obs-wrap { position: relative; }
+  .obs-drop {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 6px 16px rgba(0,0,0,.15);
+    max-height: 200px;
+    overflow: auto;
+    z-index: 50;
+    display: none;
+    margin-top: 2px;
+  }
+  .obs-drop.show { display: block; }
+  .obs-drop div {
+    padding: 0.45rem 0.7rem;
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+  .obs-drop div:hover { background: var(--accent-light); }
   .toast {
     position: fixed;
     bottom: 1.5rem;
@@ -641,7 +664,10 @@
       <div class="form-row">
         <div class="form-group">
           <label>Observación</label>
-          <textarea id="statusObs" rows="3" placeholder="Detalle de la observación..." style="padding:0.55rem 0.8rem;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:0.85rem;width:100%;resize:vertical;font-family:inherit"></textarea>
+          <div class="obs-wrap">
+            <textarea id="statusObs" rows="3" placeholder="Detalle de la observación..." style="padding:0.55rem 0.8rem;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:0.85rem;width:100%;resize:vertical;font-family:inherit" oninput="filtrarObs()" onblur="setTimeout(ocultarObs,150)"></textarea>
+            <div class="obs-drop" id="obsDrop"></div>
+          </div>
         </div>
       </div>
       <div class="form-btns" style="margin-top:1rem">
@@ -797,6 +823,18 @@ function formatearHora(h) {
   const min = p[1] ? p[1].substring(0, 2) : '00';
   return `${hora}:${min} ${ampm}`;
 }
+function normalizarHora(h) {
+  if (!h) return '';
+  const s = String(h).trim().toUpperCase();
+  const m = s.match(/^(\d{1,2})(?::(\d{1,2}))?\s*(AM|PM)?$/);
+  if (!m) return h;
+  let hora = parseInt(m[1], 10);
+  const min = m[2] ? m[2].padStart(2, '0') : '00';
+  const ampm = m[3];
+  if (ampm === 'PM' && hora < 12) hora += 12;
+  if (ampm === 'AM' && hora === 12) hora = 0;
+  return String(hora).padStart(2, '0') + ':' + min;
+}
 function getVehicleStatus(v) {
   if (v.estado && ESTADOS.includes(v.estado)) return v.estado;
   return "A CARGA";
@@ -847,7 +885,9 @@ function exportToExcel() {
     if (fa && fb) return fa.localeCompare(fb);
     if (fa) return -1;
     if (fb) return 1;
-    return 0;
+    const na = parseInt(a.cist.replace(/\D/g, '')) || 0;
+    const nb = parseInt(b.cist.replace(/\D/g, '')) || 0;
+    return na - nb;
   });
 
   const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
@@ -999,7 +1039,9 @@ function renderTable() {
     if (fa && fb) return fa.localeCompare(fb);
     if (fa) return -1;
     if (fb) return 1;
-    return 0;
+    const na = parseInt(a.cist.replace(/\D/g, '')) || 0;
+    const nb = parseInt(b.cist.replace(/\D/g, '')) || 0;
+    return na - nb;
   });
 
   if (filtered.length === 0) {
@@ -1105,13 +1147,50 @@ function openStatusModal() {
   document.getElementById("statusVehicleInfo").textContent = `${v.cabezal} - ${v.cist} - ${v.conductor}`;
   document.getElementById("statusSelect").value = getVehicleStatus(v);
   document.getElementById("statusFecha").value = v.fechaCambio || "";
-  document.getElementById("statusHora").value = v.horaCambio || "";
+  document.getElementById("statusHora").value = v.horaCambio ? normalizarHora(v.horaCambio) : "";
   document.getElementById("statusObs").value = v.obs || "";
   document.getElementById("statusModal").classList.add("active");
 }
 
 function closeStatusModal() {
   document.getElementById("statusModal").classList.remove("active");
+}
+
+let obsSugerencias = [];
+function sinAcentos(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+function filtrarObs() {
+  const ta = document.getElementById("statusObs");
+  const drop = document.getElementById("obsDrop");
+  if (!ta || !drop) return;
+  const texto = sinAcentos(ta.value);
+  if (!texto) { drop.classList.remove("show"); drop.innerHTML = ""; return; }
+  const vistos = new Set();
+  const sugs = [];
+  fleetData.forEach(v => {
+    const o = String(v.obs || '').trim();
+    if (!o) return;
+    const n = sinAcentos(o);
+    if (vistos.has(n)) return;
+    vistos.add(n);
+    if (n.includes(texto)) sugs.push(o);
+  });
+  if (!sugs.length) { drop.classList.remove("show"); drop.innerHTML = ""; return; }
+  obsSugerencias = sugs.slice(0, 12);
+  drop.innerHTML = obsSugerencias.map((o, i) =>
+    `<div onmousedown="elegirObs(${i})">${String(o).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`
+  ).join("");
+  drop.classList.add("show");
+}
+function elegirObs(i) {
+  const ta = document.getElementById("statusObs");
+  if (ta && obsSugerencias[i] !== undefined) ta.value = obsSugerencias[i];
+  ocultarObs();
+}
+function ocultarObs() {
+  const drop = document.getElementById("obsDrop");
+  if (drop) { drop.classList.remove("show"); drop.innerHTML = ""; }
 }
 
 function saveStatusUpdate() {
@@ -1125,7 +1204,7 @@ function saveStatusUpdate() {
   const oldSt = getVehicleStatus(v);
   v.estado = newStatus;
   v.fechaCambio = fecha;
-  v.horaCambio = hora;
+  v.horaCambio = normalizarHora(hora);
   v.obs = obs;
   v.lastChange = new Date().toLocaleString("es-HN");
   saveFleet(fleetData);
@@ -1302,6 +1381,14 @@ async function deleteVehicle(id) {
   if (!vehicleDB || vehicleDB.length === 0) {
     vehicleDB = loadDB();
   }
+  let cambio = false;
+  fleetData.forEach(v => {
+    if (v.horaCambio) {
+      const n = normalizarHora(v.horaCambio);
+      if (n !== v.horaCambio) { v.horaCambio = n; cambio = true; }
+    }
+  });
+  if (cambio) saveFleet(fleetData);
   saveFleet(fleetData);
   if (dbRef) guardarNube("vehiculos", vehicleDB);
   renderTable();
