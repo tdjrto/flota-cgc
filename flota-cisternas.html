@@ -243,6 +243,8 @@
     cursor: pointer;
   }
   .obs-drop div:hover { background: var(--accent-light); }
+  .hist-buscar-wrap { position: relative; flex: 1; min-width: 220px; }
+  .hist-buscar-wrap input { width: 100%; }
   .toast {
     position: fixed;
     bottom: 1.5rem;
@@ -494,7 +496,7 @@
   <button class="btn btn-export" onclick="exportToExcel()">📥 Exportar a Excel</button>
   <button class="btn btn-image" onclick="exportarImagen()">🖼️ Exportar Imagen</button>
   <button class="btn btn-db" onclick="openDBModal()">🗄️ Asignación de Cisternas</button>
-  <button class="btn btn-hist" onclick="openHistorialModal()">📜 Historial</button>
+  <button class="btn btn-hist" onclick="openHistorialSection()">📜 Historial</button>
 </div>
 
 <div class="table-wrap">
@@ -700,37 +702,36 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="historialModal">
-  <div class="modal" style="max-width:1100px">
-    <div class="modal-header">
-      <h2>📜 Historial de estados</h2>
-      <button class="modal-close" onclick="closeHistorialModal()">&times;</button>
+<div id="secHistorial" style="display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0">
+  <div class="controls">
+    <button class="btn btn-db" onclick="closeHistorialSection()">← Volver</button>
+    <div class="hist-buscar-wrap">
+      <input type="text" id="histBuscar" placeholder="Buscar placa, cisterna o conductor..." oninput="filtrarHistorial()" onblur="setTimeout(ocultarHistDrop,150)">
+      <div class="obs-drop" id="histDrop"></div>
     </div>
-    <div class="modal-body">
-      <div class="modal-actions">
-        <input type="text" id="histBuscar" placeholder="Filtrar por placa, cisterna o conductor..." oninput="renderHistorial()" style="padding:0.55rem 1rem;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:0.85rem;min-width:240px;flex:1">
-        <button class="btn btn-cancel" onclick="limpiarHistorial()">✕ Limpiar</button>
-      </div>
-      <table class="db-table" style="min-width:1050px">
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Hora</th>
-            <th>Placa Cabezal</th>
-            <th>Placa Remolque</th>
-            <th>Cisterna</th>
-            <th>Ejes</th>
-            <th>Conductor</th>
-            <th>Dotación</th>
-            <th>Estado</th>
-            <th>Observación</th>
-            <th>Asignación</th>
-          </tr>
-        </thead>
-        <tbody id="historialBody"></tbody>
-      </table>
-      <div id="historialNoRes" style="display:none;text-align:center;color:var(--text-dim);padding:2rem">No hay registros de historial.</div>
-    </div>
+    <button class="btn btn-cancel" onclick="limpiarHistorial()">✕ Limpiar</button>
+    <button class="btn btn-export" onclick="exportarHistorialExcel()">📥 Exportar a Excel</button>
+  </div>
+  <div class="table-wrap">
+    <table class="db-table" style="min-width:1050px">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Hora</th>
+          <th>Placa Cabezal</th>
+          <th>Placa Remolque</th>
+          <th>Cisterna</th>
+          <th>Ejes</th>
+          <th>Conductor</th>
+          <th>Dotación</th>
+          <th>Estado</th>
+          <th>Observación</th>
+          <th>Asignación</th>
+        </tr>
+      </thead>
+      <tbody id="historialBody"></tbody>
+    </table>
+    <div id="historialNoRes" style="display:none;text-align:center;color:var(--text-dim);padding:2rem">No hay registros de historial.</div>
   </div>
 </div>
 
@@ -1301,15 +1302,23 @@ function saveStatusUpdate() {
   showToast(`🔄 ${v.cabezal} (${v.cist}): ${oldSt} → ${newStatus}`);
 }
 
-function openHistorialModal() {
-  document.getElementById("historialModal").classList.add("active");
+let histFiltrado = [];
+let histSugerencias = [];
+
+function openHistorialSection() {
+  document.querySelector(".controls").style.display = "none";
+  document.querySelector(".table-wrap").style.display = "none";
+  document.getElementById("secHistorial").style.display = "flex";
   renderHistorial();
 }
-function closeHistorialModal() {
-  document.getElementById("historialModal").classList.remove("active");
+function closeHistorialSection() {
+  document.getElementById("secHistorial").style.display = "none";
+  document.querySelector(".controls").style.display = "flex";
+  document.querySelector(".table-wrap").style.display = "block";
 }
 function limpiarHistorial() {
   document.getElementById("histBuscar").value = "";
+  ocultarHistDrop();
   renderHistorial();
 }
 function renderHistorial() {
@@ -1328,6 +1337,7 @@ function renderHistorial() {
     );
   }
   lista.sort((a, b) => ((b.fecha || '') + 'T' + (b.hora || '')).localeCompare((a.fecha || '') + 'T' + (a.hora || '')));
+  histFiltrado = lista;
   noRes.style.display = lista.length ? "none" : "block";
   tbody.innerHTML = lista.map(e => {
     const dotClass = e.dotacion === "SOPLADOR" ? "dotacion-sop" : "dotacion-senc";
@@ -1345,6 +1355,71 @@ function renderHistorial() {
       <td><span class="placa" style="color:var(--accent)">${e.asignacion || '—'}</span></td>
     </tr>`;
   }).join("");
+}
+
+function filtrarHistorial() {
+  const inp = document.getElementById("histBuscar");
+  const drop = document.getElementById("histDrop");
+  if (!inp || !drop) return;
+  const texto = sinAcentos(inp.value.trim());
+  const vistos = new Set();
+  const sugs = [];
+  const add = val => {
+    const s = String(val || '').trim();
+    if (!s) return;
+    const n = sinAcentos(s);
+    if (vistos.has(n)) return;
+    vistos.add(n);
+    if (!texto) return;
+    if (n.includes(texto)) sugs.push(s);
+  };
+  historial.forEach(e => { add(e.cabezal); add(e.remolque); add(e.cist); add(e.conductor); });
+  if (!sugs.length) { drop.classList.remove("show"); drop.innerHTML = ""; return; }
+  histSugerencias = sugs.slice(0, 12);
+  drop.innerHTML = histSugerencias.map((s, i) =>
+    `<div onmousedown="elegirSugHist(${i})">${String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`
+  ).join("");
+  drop.classList.add("show");
+}
+function elegirSugHist(i) {
+  const inp = document.getElementById("histBuscar");
+  if (inp && histSugerencias[i] !== undefined) inp.value = histSugerencias[i];
+  ocultarHistDrop();
+  renderHistorial();
+}
+function ocultarHistDrop() {
+  const drop = document.getElementById("histDrop");
+  if (drop) { drop.classList.remove("show"); drop.innerHTML = ""; }
+}
+
+function cargarXLSX(cb) {
+  if (window.XLSX) { cb(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  s.onload = cb;
+  s.onerror = function() { showToast('❌ No se pudo cargar la librería de Excel (revisa la conexión)'); };
+  document.head.appendChild(s);
+}
+function exportarHistorialExcel() {
+  if (!histFiltrado || !histFiltrado.length) { showToast("No hay registros para exportar"); return; }
+  cargarXLSX(function() {
+    try {
+      const rows = [["Fecha","Hora","Placa Cabezal","Placa Remolque","Cisterna","Ejes","Conductor","Dotación","Estado","Observación","Asignación"]];
+      histFiltrado.forEach(e => {
+        rows.push([
+          formatearFecha(e.fecha),
+          formatearHora(e.hora),
+          e.cabezal, e.remolque, e.cist, Number(e.ejes), e.conductor, e.dotacion, e.estado, e.obs || '', e.asignacion || ''
+        ]);
+      });
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [{wch:12},{wch:10},{wch:14},{wch:14},{wch:9},{wch:6},{wch:26},{wch:11},{wch:14},{wch:40},{wch:14}];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Historial");
+      XLSX.writeFile(wb, "Historial_Flota_CGC.xlsx");
+      showToast("📤 Historial exportado a Excel");
+    } catch(err) { showToast("❌ Error al exportar: " + err.message); }
+  });
 }
 
 function resetAll() {
