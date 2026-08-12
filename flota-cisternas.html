@@ -131,6 +131,8 @@
   .btn-export:hover { background: var(--info); color: #fff; }
   .btn-image { border-color: #7b1fa2; color: #7b1fa2; }
   .btn-image:hover { background: #7b1fa2; color: #fff; }
+  .btn-hist { border-color: #00897b; color: #00897b; }
+  .btn-hist:hover { background: #00897b; color: #fff; }
   .btn-add { border-color: var(--success); color: var(--success); }
   .btn-add:hover { background: var(--success); color: #fff; }
   .table-wrap {
@@ -492,6 +494,7 @@
   <button class="btn btn-export" onclick="exportToExcel()">📥 Exportar a Excel</button>
   <button class="btn btn-image" onclick="exportarImagen()">🖼️ Exportar Imagen</button>
   <button class="btn btn-db" onclick="openDBModal()">🗄️ Asignación de Cisternas</button>
+  <button class="btn btn-hist" onclick="openHistorialModal()">📜 Historial</button>
 </div>
 
 <div class="table-wrap">
@@ -697,6 +700,40 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="historialModal">
+  <div class="modal" style="max-width:1100px">
+    <div class="modal-header">
+      <h2>📜 Historial de estados</h2>
+      <button class="modal-close" onclick="closeHistorialModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-actions">
+        <input type="text" id="histBuscar" placeholder="Filtrar por placa, cisterna o conductor..." oninput="renderHistorial()" style="padding:0.55rem 1rem;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:0.85rem;min-width:240px;flex:1">
+        <button class="btn btn-cancel" onclick="limpiarHistorial()">✕ Limpiar</button>
+      </div>
+      <table class="db-table" style="min-width:1050px">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Hora</th>
+            <th>Placa Cabezal</th>
+            <th>Placa Remolque</th>
+            <th>Cisterna</th>
+            <th>Ejes</th>
+            <th>Conductor</th>
+            <th>Dotación</th>
+            <th>Estado</th>
+            <th>Observación</th>
+            <th>Asignación</th>
+          </tr>
+        </thead>
+        <tbody id="historialBody"></tbody>
+      </table>
+      <div id="historialNoRes" style="display:none;text-align:center;color:var(--text-dim);padding:2rem">No hay registros de historial.</div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -786,6 +823,11 @@ async function sincronizar() {
       localStorage.setItem("flota_vehicle_db", JSON.stringify(v));
       vehicleDB = v;
     }
+    const h = await cargarDeFirebase("historial");
+    if (h) {
+      localStorage.setItem("flota_historial", JSON.stringify(h));
+      historial = h;
+    }
     servidorConectado = true;
     document.getElementById("syncStatus").textContent = "● Nube";
     document.getElementById("syncStatus").style.color = "#2e7d32";
@@ -823,6 +865,17 @@ function saveFleet(f) {
 }
 
 let fleetData = loadFleet();
+
+let historial = loadHistorial();
+function loadHistorial() {
+  const s = localStorage.getItem("flota_historial");
+  if (s) { try { return JSON.parse(s); } catch(e) {} }
+  return [];
+}
+function saveHistorial() {
+  localStorage.setItem("flota_historial", JSON.stringify(historial));
+  guardarNube("historial", historial);
+}
 
 function formatearFecha(f) {
   if (!f) return '';
@@ -1226,10 +1279,72 @@ function saveStatusUpdate() {
   v.horaCambio = normalizarHora(hora);
   v.obs = obs;
   v.lastChange = new Date().toLocaleString("es-HN");
+  const asg = (vehicleDB.find(x => x.cist === v.cist) || {}).cabezal || '—';
+  historial.push({
+    fecha: fecha,
+    hora: normalizarHora(hora),
+    cabezal: v.cabezal,
+    remolque: v.remolque,
+    cist: v.cist,
+    ejes: v.ejes,
+    conductor: v.conductor,
+    dotacion: v.dotacion,
+    estado: newStatus,
+    obs: obs,
+    asignacion: asg,
+    lastChange: new Date().toLocaleString("es-HN")
+  });
+  saveHistorial();
   saveFleet(fleetData);
   closeStatusModal();
   renderTable();
   showToast(`🔄 ${v.cabezal} (${v.cist}): ${oldSt} → ${newStatus}`);
+}
+
+function openHistorialModal() {
+  document.getElementById("historialModal").classList.add("active");
+  renderHistorial();
+}
+function closeHistorialModal() {
+  document.getElementById("historialModal").classList.remove("active");
+}
+function limpiarHistorial() {
+  document.getElementById("histBuscar").value = "";
+  renderHistorial();
+}
+function renderHistorial() {
+  const tbody = document.getElementById("historialBody");
+  const noRes = document.getElementById("historialNoRes");
+  if (!tbody || !noRes) return;
+  const q = sinAcentos(document.getElementById("histBuscar").value.trim());
+  let lista = [...historial];
+  if (q) {
+    lista = lista.filter(e =>
+      sinAcentos(e.cabezal).includes(q) ||
+      sinAcentos(e.remolque).includes(q) ||
+      sinAcentos(e.cist).includes(q) ||
+      sinAcentos(e.conductor).includes(q) ||
+      sinAcentos(e.asignacion).includes(q)
+    );
+  }
+  lista.sort((a, b) => ((b.fecha || '') + 'T' + (b.hora || '')).localeCompare((a.fecha || '') + 'T' + (a.hora || '')));
+  noRes.style.display = lista.length ? "none" : "block";
+  tbody.innerHTML = lista.map(e => {
+    const dotClass = e.dotacion === "SOPLADOR" ? "dotacion-sop" : "dotacion-senc";
+    return `<tr>
+      <td>${formatearFecha(e.fecha)}</td>
+      <td>${formatearHora(e.hora)}</td>
+      <td><span class="placa">${e.cabezal}</span></td>
+      <td><span class="placa">${e.remolque}</span></td>
+      <td><span class="cist-num">${e.cist}</span></td>
+      <td style="text-align:center;font-weight:700">${e.ejes}</td>
+      <td><span class="conductor">${e.conductor}</span></td>
+      <td><span class="dotacion-tag ${dotClass}">${e.dotacion}</span></td>
+      <td><span class="status-select ${getStatusClass(e.estado)}">${e.estado}</span></td>
+      <td><span class="obs-cell" title="${e.obs || ''}">${e.obs || '—'}</span></td>
+      <td><span class="placa" style="color:var(--accent)">${e.asignacion || '—'}</span></td>
+    </tr>`;
+  }).join("");
 }
 
 function resetAll() {
@@ -1410,6 +1525,7 @@ async function deleteVehicle(id) {
   if (cambio) saveFleet(fleetData);
   saveFleet(fleetData);
   if (dbRef) guardarNube("vehiculos", vehicleDB);
+  if (dbRef) guardarNube("historial", historial);
   renderTable();
 })();
 
