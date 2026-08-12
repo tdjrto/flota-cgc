@@ -1608,9 +1608,7 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js');
 }
 
-(function initListZoom() {
-  if (!('ontouchstart' in window)) return;
-  const wrap = document.querySelector('.table-wrap');
+function initTableZoom(wrap) {
   const tbl = wrap ? wrap.querySelector('table') : null;
   if (!wrap || !tbl) return;
   const ZMIN = 0.45, ZMAX = 1;
@@ -1633,7 +1631,11 @@ if ('serviceWorker' in navigator) {
     }
   }, { passive: false });
   wrap.addEventListener('touchend', function() { pDist = 0; }, { passive: true });
-})();
+}
+
+if ('ontouchstart' in window) {
+  document.querySelectorAll('.table-wrap').forEach(initTableZoom);
+}
 </script>
 </body>
 </html>
