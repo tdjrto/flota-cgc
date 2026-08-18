@@ -1025,7 +1025,14 @@ function exportarImagen() {
     const orderA = estadoOrder[getVehicleStatus(a)] ?? 99;
     const orderB = estadoOrder[getVehicleStatus(b)] ?? 99;
     if (orderA !== orderB) return orderA - orderB;
-    return (a.cist || '').localeCompare(b.cist || '');
+    const fa = a.fechaCambio && a.horaCambio ? a.fechaCambio + "T" + a.horaCambio : a.fechaCambio || "";
+    const fb = b.fechaCambio && b.horaCambio ? b.fechaCambio + "T" + b.horaCambio : b.fechaCambio || "";
+    if (fa && fb) return fa.localeCompare(fb);
+    if (fa) return -1;
+    if (fb) return 1;
+    const na = parseInt(a.cist.replace(/\D/g, '')) || 0;
+    const nb = parseInt(b.cist.replace(/\D/g, '')) || 0;
+    return na - nb;
   });
   const tabla = document.getElementById("flotaBody");
   if (!tabla || tabla.rows.length === 0) { showToast("No hay datos para exportar", "error"); return; }
