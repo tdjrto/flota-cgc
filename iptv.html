@@ -700,6 +700,7 @@ function saveCache(data) { try { localStorage.setItem('iptv_cache', JSON.stringi
 function loadCache() { try { return JSON.parse(localStorage.getItem('iptv_cache')); } catch(e) { return null; } }
 
 async function loadAllData() {
+  console.log('loadAllData start, protocol:', location.protocol);
   const cached = loadCache();
   if (cached && cached.liveStreams && cached.liveStreams.length) {
     liveCategories = cached.liveCategories || [];
@@ -715,7 +716,7 @@ async function loadAllData() {
     renderAll();
   }
   try {
-    const [lc, ls, mc, ms, sc, sl] = await Promise.all([
+    const results = await Promise.allSettled([
       fetchJSON(api('get_live_categories')),
       fetchJSON(api('get_live_streams')),
       fetchJSON(api('get_vod_categories')),
@@ -723,6 +724,12 @@ async function loadAllData() {
       fetchJSON(api('get_series_categories')),
       fetchJSON(api('get_series'))
     ]);
+    const lc = results[0].status === 'fulfilled' ? results[0].value : [];
+    const ls = results[1].status === 'fulfilled' ? results[1].value : [];
+    const mc = results[2].status === 'fulfilled' ? results[2].value : [];
+    const ms = results[3].status === 'fulfilled' ? results[3].value : [];
+    const sc = results[4].status === 'fulfilled' ? results[4].value : [];
+    const sl = results[5].status === 'fulfilled' ? results[5].value : [];
     liveCategories = lc || [];
     liveStreams = ls || [];
     movieCategories = mc || [];
@@ -865,12 +872,17 @@ function proxyUrl(url) {
   if (location.protocol === 'https:' && PROXY_URL) return PROXY_URL + '?url=' + encodeURIComponent(url);
   return url;
 }
+function fetchWithTimeout(url, ms) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
+}
 async function fetchJSON(url) {
   try {
-    const r = await fetch(proxyUrl(url));
+    const r = await fetchWithTimeout(proxyUrl(url), 20000);
     const t = await r.text();
     let d;
-    try { d = JSON.parse(t); } catch(e) { return []; }
+    try { d = JSON.parse(t); } catch(e) { console.warn('Not JSON:', t.substring(0,200)); return []; }
     if (d === null || d === undefined) return [];
     if (Array.isArray(d)) return d;
     if (typeof d === 'object') {
@@ -881,7 +893,7 @@ async function fetchJSON(url) {
       return vals;
     }
     return [];
-  } catch(e) { return []; }
+  } catch(e) { console.warn('fetchJSON error:', url.split('?')[0], e.message); return []; }
 }
 
 /* ========== HOME / NAVIGATION ========== */
