@@ -576,7 +576,7 @@ let currentPlayingContext = null;
 let hlsInstance = null;
 let isMiniPlayer = false;
 let currentSection = 'home';
-const PROXY_URL = 'https://corsproxy.io/?url=';
+const PROXY_URL = 'https://corsproxy.io/';
 
 /* ========== FAVORITES & CONTINUE WATCHING ========== */
 function getFavs(key) { try { return JSON.parse(localStorage.getItem(key)) || []; } catch(e) { return []; } }
