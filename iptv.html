@@ -576,6 +576,7 @@ let currentPlayingContext = null;
 let hlsInstance = null;
 let isMiniPlayer = false;
 let currentSection = 'home';
+const PROXY_URL = 'https://corsproxy.io/?url=';
 
 /* ========== FAVORITES & CONTINUE WATCHING ========== */
 function getFavs(key) { try { return JSON.parse(localStorage.getItem(key)) || []; } catch(e) { return []; } }
@@ -631,7 +632,7 @@ function clearContinue(type, id) {
 /* ========== LOGIN ========== */
 function loadCreds() {
   const s = localStorage.getItem('iptv_creds');
-  if (s) { try { const c = JSON.parse(s); if (c.server) c.server = c.server.replace(/^http:\/\//i, 'https://'); return c; } catch(e) {} }
+  if (s) { try { return JSON.parse(s); } catch(e) {} }
   return null;
 }
 function saveCreds() {
@@ -644,17 +645,17 @@ async function doLogin() {
   const user = document.getElementById('loginUser').value.trim();
   const pass = document.getElementById('loginPass').value.trim();
   if (!url || !user || !pass) { showLoginError('Completa todos los campos'); return; }
-  const finalUrl = url.replace(/^http:\/\//i, 'https://');
   document.getElementById('btnLogin').disabled = true;
   document.getElementById('loginLoading').style.display = 'block';
   document.getElementById('loginError').style.display = 'none';
-  SERVER = finalUrl; USER = user; PASS = pass;
+  SERVER = url; USER = user; PASS = pass;
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.add('active');
   document.getElementById('homeScreen').classList.add('active');
   loadAllData();
   try {
-    const res = await fetch(`${finalUrl}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`);
+    const loginUrl = `${url}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
+    const res = await fetch(proxyUrl(loginUrl));
     const data = await res.json();
     if (data.user_info && data.user_info.auth === 1) {
       saveCreds();
@@ -860,9 +861,13 @@ function buildHomeRow(title, items) {
       `).join('')}</div>
     </div>`;
 }
+function proxyUrl(url) {
+  if (location.protocol === 'https:' && PROXY_URL) return PROXY_URL + '?url=' + encodeURIComponent(url);
+  return url;
+}
 async function fetchJSON(url) {
   try {
-    const r = await fetch(url);
+    const r = await fetch(proxyUrl(url));
     const t = await r.text();
     let d;
     try { d = JSON.parse(t); } catch(e) { return []; }
@@ -1333,7 +1338,6 @@ function showToast(msg) {
   try { history.pushState(null, '', location.href); } catch(e) {}
   const creds = loadCreds();
   if (creds && creds.server && creds.user && creds.pass) {
-    creds.server = creds.server.replace(/^http:\/\//i, 'https://');
     SERVER = creds.server; USER = creds.user; PASS = creds.pass;
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('app').classList.add('active');
