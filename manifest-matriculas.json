@@ -1,0 +1,9 @@
+{
+  "name": "Matrículas Vehículos CGC",
+  "short_name": "Matrículas",
+  "start_url": "./Matriculas%20veh%C3%ADculos%20CGC.html",
+  "display": "standalone",
+  "background_color": "#f1f5f9",
+  "theme_color": "#3b82f6",
+  "icons": []
+}
