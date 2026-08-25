@@ -985,7 +985,7 @@ function renderLiveCategories() {
   if (activeLiveSection === 'channels' && activeLiveCat === 'all') html += `<div class="sidebar-item active" onclick="selectLiveSection('channels')"><span>Todos</span><span class="count">${liveStreams.length}</span></div>`;
   else html += `<div class="sidebar-item ${activeLiveSection==='channels'&&activeLiveCat==='all'?'active':''}" onclick="selectLiveSection('channels')"><span>Todos</span><span class="count">${liveStreams.length}</span></div>`;
   liveCategories.forEach(cat => {
-    const n = cat.category_name;
+    const n = cat.category_name || 'Sin categoría';
     html += `<div class="sidebar-item ${activeLiveSection==='channels'&&activeLiveCat===n?'active':''}" onclick="selectLiveCat('${n.replace(/'/g,"\\'")}')"><span>${n}</span><span class="count">${counts[n]||0}</span></div>`;
   });
   el.innerHTML = html;
@@ -1047,7 +1047,7 @@ function renderMovieCategories() {
   html += `<div class="sidebar-section-divider"></div>`;
   html += `<div class="sidebar-item ${activeMovieSection==='movies'&&activeMovieCat==='all'?'active':''}" onclick="selectMovieSection('movies')"><span>Todas</span><span class="count">${movieStreams.length}</span></div>`;
   movieCategories.forEach(cat => {
-    const n = cat.category_name;
+    const n = cat.category_name || 'Sin categoría';
     html += `<div class="sidebar-item ${activeMovieSection==='movies'&&activeMovieCat===n?'active':''}" onclick="selectMovieCat('${n.replace(/'/g,"\\'")}')"><span>${n}</span><span class="count">${counts[n]||0}</span></div>`;
   });
   el.innerHTML = html;
@@ -1132,7 +1132,7 @@ function renderSeriesCategories() {
   html += `<div class="sidebar-section-divider"></div>`;
   html += `<div class="sidebar-item ${activeSeriesSection==='series'&&activeSeriesCat==='all'?'active':''}" onclick="selectSeriesSection('series')"><span>Todas</span><span class="count">${seriesList.length}</span></div>`;
   seriesCategories.forEach(cat => {
-    const n = cat.category_name;
+    const n = cat.category_name || 'Sin categoría';
     html += `<div class="sidebar-item ${activeSeriesSection==='series'&&activeSeriesCat===n?'active':''}" onclick="selectSeriesCat('${n.replace(/'/g,"\\'")}')"><span>${n}</span></div>`;
   });
   el.innerHTML = html;
