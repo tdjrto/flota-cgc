@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="IPTV">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>">
@@ -716,44 +716,56 @@ async function loadAllData() {
     renderAll();
   }
   try {
-    const results = await Promise.allSettled([
+    const catResults = await Promise.allSettled([
       fetchJSON(api('get_live_categories')),
-      fetchJSON(api('get_live_streams')),
       fetchJSON(api('get_vod_categories')),
-      fetchJSON(api('get_vod_streams')),
-      fetchJSON(api('get_series_categories')),
-      fetchJSON(api('get_series'))
+      fetchJSON(api('get_series_categories'))
     ]);
-    const lc = results[0].status === 'fulfilled' ? results[0].value : [];
-    const ls = results[1].status === 'fulfilled' ? results[1].value : [];
-    const mc = results[2].status === 'fulfilled' ? results[2].value : [];
-    const ms = results[3].status === 'fulfilled' ? results[3].value : [];
-    const sc = results[4].status === 'fulfilled' ? results[4].value : [];
-    const sl = results[5].status === 'fulfilled' ? results[5].value : [];
-    liveCategories = lc || [];
-    liveStreams = ls || [];
-    movieCategories = mc || [];
-    movieStreams = ms || [];
-    seriesCategories = sc || [];
-    seriesList = sl || [];
-
+    liveCategories = catResults[0].status === 'fulfilled' ? catResults[0].value || [] : [];
+    movieCategories = catResults[1].status === 'fulfilled' ? catResults[1].value || [] : [];
+    seriesCategories = catResults[2].status === 'fulfilled' ? catResults[2].value || [] : [];
     liveCatMap = {};
-    liveCategories.forEach(c => { liveCatMap[c.category_id] = c.category_name; });
+    liveCategories.forEach(c => { liveCatMap[c.category_id] = c.category_name || 'Sin categoría'; });
+    movieCatMap = {};
+    movieCategories.forEach(c => { movieCatMap[c.category_id] = c.category_name || 'Sin categoría'; });
+    seriesCatMap = {};
+    seriesCategories.forEach(c => { seriesCatMap[c.category_id] = c.category_name || 'Sin categoría'; });
+    renderAll();
+
+    const lsResult = await Promise.allSettled([fetchJSON(api('get_live_streams'))]);
+    liveStreams = lsResult[0].status === 'fulfilled' ? lsResult[0].value || [] : [];
     liveStreams.forEach(s => {
       if (!s.category_name && s.category_id) s.category_name = liveCatMap[s.category_id] || '';
     });
+    renderAll();
 
-    movieCatMap = {};
-    movieCategories.forEach(c => { movieCatMap[c.category_id] = c.category_name; });
-    movieStreams.forEach(s => {
-      if (!s.category && s.category_id) s.category = movieCatMap[s.category_id] || '';
-    });
+    movieStreams = [];
+    const mcBatches = movieCategories.map(cat => cat.category_id);
+    for (let i = 0; i < mcBatches.length; i += 5) {
+      const batch = mcBatches.slice(i, i + 5);
+      const batchResults = await Promise.allSettled(batch.map(cid => fetchJSON(api('get_vod_streams', `&category_id=${cid}`))));
+      batchResults.forEach(r => {
+        if (r.status === 'fulfilled' && r.value) {
+          r.value.forEach(s => { if (!s.category && s.category_id) s.category = movieCatMap[s.category_id] || ''; });
+          movieStreams.push(...r.value);
+        }
+      });
+      renderAll();
+    }
 
-    seriesCatMap = {};
-    seriesCategories.forEach(c => { seriesCatMap[c.category_id] = c.category_name; });
-    seriesList.forEach(s => {
-      if (!s.category_name && s.category_id) s.category_name = seriesCatMap[s.category_id] || '';
-    });
+    seriesList = [];
+    const scBatches = seriesCategories.map(cat => cat.category_id);
+    for (let i = 0; i < scBatches.length; i += 5) {
+      const batch = scBatches.slice(i, i + 5);
+      const batchResults = await Promise.allSettled(batch.map(cid => fetchJSON(api('get_series', `&category_id=${cid}`))));
+      batchResults.forEach(r => {
+        if (r.status === 'fulfilled' && r.value) {
+          r.value.forEach(s => { if (!s.category_name && s.category_id) s.category_name = seriesCatMap[s.category_id] || ''; });
+          seriesList.push(...r.value);
+        }
+      });
+      renderAll();
+    }
 
     saveCache({ liveCategories, liveStreams, movieCategories, movieStreams, seriesCategories, seriesList, liveCatMap, movieCatMap, seriesCatMap });
   } catch(e) { console.error('Error loading data:', e); }
