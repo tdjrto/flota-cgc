@@ -576,7 +576,7 @@ let currentPlayingContext = null;
 let hlsInstance = null;
 let isMiniPlayer = false;
 let currentSection = 'home';
-const PROXY_URL = 'https://api.allorigins.win/raw';
+const PROXY_URL = 'https://corsproxy.io/';
 
 /* ========== FAVORITES & CONTINUE WATCHING ========== */
 function getFavs(key) { try { return JSON.parse(localStorage.getItem(key)) || []; } catch(e) { return []; } }
@@ -715,6 +715,7 @@ async function loadAllData() {
     restoreLastLiveCategory();
     renderAll();
   }
+  const delay = ms => new Promise(r => setTimeout(r, ms));
   try {
     const catResults = await Promise.allSettled([
       fetchJSON(api('get_live_categories')),
@@ -732,39 +733,46 @@ async function loadAllData() {
     seriesCategories.forEach(c => { seriesCatMap[c.category_id] = c.category_name || 'Sin categoría'; });
     renderAll();
 
-    const lsResult = await Promise.allSettled([fetchJSON(api('get_live_streams'))]);
-    liveStreams = lsResult[0].status === 'fulfilled' ? lsResult[0].value || [] : [];
-    liveStreams.forEach(s => {
-      if (!s.category_name && s.category_id) s.category_name = liveCatMap[s.category_id] || '';
-    });
-    renderAll();
+    liveStreams = [];
+    for (let i = 0; i < liveCategories.length; i += 3) {
+      const batch = liveCategories.slice(i, i + 3);
+      const results = await Promise.allSettled(batch.map(c => fetchJSON(api('get_live_streams', `&category_id=${c.category_id}`))));
+      results.forEach(r => {
+        if (r.status === 'fulfilled' && r.value) {
+          r.value.forEach(s => { if (!s.category_name && s.category_id) s.category_name = liveCatMap[s.category_id] || ''; });
+          liveStreams.push(...r.value);
+        }
+      });
+      renderAll();
+      await delay(300);
+    }
 
     movieStreams = [];
-    const mcBatches = movieCategories.map(cat => cat.category_id);
-    for (let i = 0; i < mcBatches.length; i += 5) {
-      const batch = mcBatches.slice(i, i + 5);
-      const batchResults = await Promise.allSettled(batch.map(cid => fetchJSON(api('get_vod_streams', `&category_id=${cid}`))));
-      batchResults.forEach(r => {
+    for (let i = 0; i < movieCategories.length; i += 3) {
+      const batch = movieCategories.slice(i, i + 3);
+      const results = await Promise.allSettled(batch.map(c => fetchJSON(api('get_vod_streams', `&category_id=${c.category_id}`))));
+      results.forEach(r => {
         if (r.status === 'fulfilled' && r.value) {
           r.value.forEach(s => { if (!s.category && s.category_id) s.category = movieCatMap[s.category_id] || ''; });
           movieStreams.push(...r.value);
         }
       });
       renderAll();
+      await delay(300);
     }
 
     seriesList = [];
-    const scBatches = seriesCategories.map(cat => cat.category_id);
-    for (let i = 0; i < scBatches.length; i += 5) {
-      const batch = scBatches.slice(i, i + 5);
-      const batchResults = await Promise.allSettled(batch.map(cid => fetchJSON(api('get_series', `&category_id=${cid}`))));
-      batchResults.forEach(r => {
+    for (let i = 0; i < seriesCategories.length; i += 3) {
+      const batch = seriesCategories.slice(i, i + 3);
+      const results = await Promise.allSettled(batch.map(c => fetchJSON(api('get_series', `&category_id=${c.category_id}`))));
+      results.forEach(r => {
         if (r.status === 'fulfilled' && r.value) {
           r.value.forEach(s => { if (!s.category_name && s.category_id) s.category_name = seriesCatMap[s.category_id] || ''; });
           seriesList.push(...r.value);
         }
       });
       renderAll();
+      await delay(300);
     }
 
     saveCache({ liveCategories, liveStreams, movieCategories, movieStreams, seriesCategories, seriesList, liveCatMap, movieCatMap, seriesCatMap });
