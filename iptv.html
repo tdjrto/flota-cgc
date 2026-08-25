@@ -716,63 +716,55 @@ async function loadAllData() {
     renderAll();
   }
   const delay = ms => new Promise(r => setTimeout(r, ms));
+  async function fetchSeq(url) {
+    const r = await fetchJSON(url);
+    await delay(1500);
+    return r;
+  }
   try {
-    const catResults = await Promise.allSettled([
-      fetchJSON(api('get_live_categories')),
-      fetchJSON(api('get_vod_categories')),
-      fetchJSON(api('get_series_categories'))
-    ]);
-    liveCategories = catResults[0].status === 'fulfilled' ? catResults[0].value || [] : [];
-    movieCategories = catResults[1].status === 'fulfilled' ? catResults[1].value || [] : [];
-    seriesCategories = catResults[2].status === 'fulfilled' ? catResults[2].value || [] : [];
+    liveCategories = await fetchSeq(api('get_live_categories'));
     liveCatMap = {};
-    liveCategories.forEach(c => { liveCatMap[c.category_id] = c.category_name || 'Sin categoría'; });
+    (liveCategories || []).forEach(c => { liveCatMap[c.category_id] = c.category_name || 'Sin categoría'; });
+    renderAll();
+
+    movieCategories = await fetchSeq(api('get_vod_categories'));
     movieCatMap = {};
-    movieCategories.forEach(c => { movieCatMap[c.category_id] = c.category_name || 'Sin categoría'; });
+    (movieCategories || []).forEach(c => { movieCatMap[c.category_id] = c.category_name || 'Sin categoría'; });
+    renderAll();
+
+    seriesCategories = await fetchSeq(api('get_series_categories'));
     seriesCatMap = {};
-    seriesCategories.forEach(c => { seriesCatMap[c.category_id] = c.category_name || 'Sin categoría'; });
+    (seriesCategories || []).forEach(c => { seriesCatMap[c.category_id] = c.category_name || 'Sin categoría'; });
     renderAll();
 
     liveStreams = [];
-    for (let i = 0; i < liveCategories.length; i += 3) {
-      const batch = liveCategories.slice(i, i + 3);
-      const results = await Promise.allSettled(batch.map(c => fetchJSON(api('get_live_streams', `&category_id=${c.category_id}`))));
-      results.forEach(r => {
-        if (r.status === 'fulfilled' && r.value) {
-          r.value.forEach(s => { if (!s.category_name && s.category_id) s.category_name = liveCatMap[s.category_id] || ''; });
-          liveStreams.push(...r.value);
-        }
-      });
+    for (let i = 0; i < liveCategories.length; i++) {
+      const streams = await fetchSeq(api('get_live_streams', `&category_id=${liveCategories[i].category_id}`));
+      if (streams && streams.length) {
+        streams.forEach(s => { if (!s.category_name && s.category_id) s.category_name = liveCatMap[s.category_id] || ''; });
+        liveStreams.push(...streams);
+      }
       renderAll();
-      await delay(300);
     }
 
     movieStreams = [];
-    for (let i = 0; i < movieCategories.length; i += 3) {
-      const batch = movieCategories.slice(i, i + 3);
-      const results = await Promise.allSettled(batch.map(c => fetchJSON(api('get_vod_streams', `&category_id=${c.category_id}`))));
-      results.forEach(r => {
-        if (r.status === 'fulfilled' && r.value) {
-          r.value.forEach(s => { if (!s.category && s.category_id) s.category = movieCatMap[s.category_id] || ''; });
-          movieStreams.push(...r.value);
-        }
-      });
+    for (let i = 0; i < movieCategories.length; i++) {
+      const streams = await fetchSeq(api('get_vod_streams', `&category_id=${movieCategories[i].category_id}`));
+      if (streams && streams.length) {
+        streams.forEach(s => { if (!s.category && s.category_id) s.category = movieCatMap[s.category_id] || ''; });
+        movieStreams.push(...streams);
+      }
       renderAll();
-      await delay(300);
     }
 
     seriesList = [];
-    for (let i = 0; i < seriesCategories.length; i += 3) {
-      const batch = seriesCategories.slice(i, i + 3);
-      const results = await Promise.allSettled(batch.map(c => fetchJSON(api('get_series', `&category_id=${c.category_id}`))));
-      results.forEach(r => {
-        if (r.status === 'fulfilled' && r.value) {
-          r.value.forEach(s => { if (!s.category_name && s.category_id) s.category_name = seriesCatMap[s.category_id] || ''; });
-          seriesList.push(...r.value);
-        }
-      });
+    for (let i = 0; i < seriesCategories.length; i++) {
+      const streams = await fetchSeq(api('get_series', `&category_id=${seriesCategories[i].category_id}`));
+      if (streams && streams.length) {
+        streams.forEach(s => { if (!s.category_name && s.category_id) s.category_name = seriesCatMap[s.category_id] || ''; });
+        seriesList.push(...streams);
+      }
       renderAll();
-      await delay(300);
     }
 
     saveCache({ liveCategories, liveStreams, movieCategories, movieStreams, seriesCategories, seriesList, liveCatMap, movieCatMap, seriesCatMap });
@@ -1289,9 +1281,10 @@ function openPlayer(title, info, url, playlist, playFn, resume) {
 
   overlay.classList.add('active');
 
+  const proxiedUrl = proxyUrl(url);
   if (url.includes('.m3u8') && Hls.isSupported()) {
-    hlsInstance = new Hls({ maxBufferLength: 30, enableWorker: true });
-    hlsInstance.loadSource(url);
+    hlsInstance = new Hls({ maxBufferLength: 30, enableWorker: true, xhrSetup: (xhr, reqUrl) => { xhr.open('GET', proxyUrl(reqUrl), true); } });
+    hlsInstance.loadSource(proxiedUrl);
     hlsInstance.attachMedia(video);
     hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
       if (resume && video.duration) { video.currentTime = resume; }
@@ -1301,10 +1294,10 @@ function openPlayer(title, info, url, playlist, playFn, resume) {
       if (data.fatal) { console.error('HLS fatal error:', data); showToast('Error al reproducir'); }
     });
   } else if (url.includes('.m3u8') && video.canPlayType('application/vnd.apple.mpegurl')) {
-    video.src = url;
+    video.src = proxiedUrl;
     video.onloadedmetadata = () => { if (resume) video.currentTime = resume; video.play().catch(()=>{}); };
   } else {
-    video.src = url;
+    video.src = proxiedUrl;
     video.onloadedmetadata = () => { if (resume) video.currentTime = resume; video.play().catch(()=>{}); };
   }
 
@@ -1362,6 +1355,9 @@ function showToast(msg) {
 
 /* ========== INIT ========== */
 (function init() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
+  }
   window.addEventListener('popstate', () => {
     if (currentPlayingId && isMiniPlayer) { closePlayer(); return; }
     if (currentPlayingId && currentPlayingContext && currentPlayingContext.type === 'live') { minimizePlayer(); return; }
