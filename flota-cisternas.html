@@ -494,8 +494,10 @@
 </header>
 
 <div class="controls">
+  <button class="btn btn-edit-main" id="btnAgregarFlota" onclick="openAddFleetModal()">➕ Agregar</button>
   <button class="btn btn-edit-main" id="btnEditarSeleccion" onclick="openEditFleetModal()" disabled>✏️ Editar seleccionado</button>
   <button class="btn btn-status" id="btnActualizarEstado" onclick="openStatusModal()" disabled>🔄 Actualizar estado seleccionado</button>
+  <button class="btn btn-del" id="btnEliminarSeleccion" onclick="eliminarFlotaSeleccionado()" disabled>🗑️ Eliminar seleccionado</button>
   <button class="btn btn-export" onclick="exportToExcel()">📥 Exportar a Excel</button>
   <button class="btn btn-image" onclick="exportarImagen()">🖼️ Exportar Imagen</button>
   <button class="btn btn-db" onclick="openDBModal()">🗄️ Asignación de Cisternas</button>
@@ -601,6 +603,73 @@
         </thead>
         <tbody id="dbBody"></tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Agregar Flota -->
+<div class="modal-overlay" id="addFleetModal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <h2>➕ Agregar cisterna</h2>
+      <button class="modal-close" onclick="closeAddFleetModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Placa Cabezal</label>
+          <input type="text" id="addFleetCabezal" style="text-transform:uppercase">
+        </div>
+        <div class="form-group">
+          <label>Placa Remolque</label>
+          <input type="text" id="addFleetRemolque" style="text-transform:uppercase">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="max-width:120px">
+          <label>Cisterna</label>
+          <input type="text" id="addFleetCist" maxlength="4" style="text-transform:uppercase">
+        </div>
+        <div class="form-group" style="max-width:100px">
+          <label># Ejes</label>
+          <select id="addFleetEjes">
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </div>
+        <div class="form-group" style="max-width:150px">
+          <label>Dotación</label>
+          <select id="addFleetDotacion">
+            <option value="SENCILLO">SENCILLO</option>
+            <option value="SOPLADOR">SOPLADOR</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Conductor</label>
+          <input type="text" id="addFleetConductor">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Estado</label>
+          <select id="addFleetEstado">
+            <option value="A CARGA">A CARGA</option>
+            <option value="PRECARGADO">PRECARGADO</option>
+            <option value="CARGADO">CARGADO</option>
+            <option value="NO DISPONIBLE">NO DISPONIBLE</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>Observación</label>
+          <input type="text" id="addFleetObs">
+        </div>
+      </div>
+      <div class="form-btns" style="margin-top:1rem">
+        <button class="btn-save" onclick="saveAddFleet()">Agregar</button>
+        <button class="btn-cancel" onclick="closeAddFleetModal()">Cancelar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1195,6 +1264,8 @@ function selectFleetRow(id) {
   selectedFleetId = selectedFleetId === id ? null : id;
   document.getElementById("btnEditarSeleccion").disabled = selectedFleetId === null;
   document.getElementById("btnActualizarEstado").disabled = selectedFleetId === null;
+  const btnDel = document.getElementById("btnEliminarSeleccion");
+  if (btnDel) btnDel.disabled = selectedFleetId === null;
   renderTable();
 }
 
@@ -1240,6 +1311,70 @@ function saveEditFleet() {
   closeEditFleetModal();
   renderTable();
   showToast(`✏️ ${cabezal} (${cist}) actualizado en la flota`);
+}
+
+function openAddFleetModal() {
+  document.getElementById("addFleetCabezal").value = "";
+  document.getElementById("addFleetRemolque").value = "";
+  document.getElementById("addFleetCist").value = "";
+  document.getElementById("addFleetEjes").value = "2";
+  document.getElementById("addFleetDotacion").value = "SENCILLO";
+  document.getElementById("addFleetConductor").value = "";
+  document.getElementById("addFleetEstado").value = "A CARGA";
+  document.getElementById("addFleetObs").value = "";
+  document.getElementById("addFleetModal").classList.add("active");
+  document.getElementById("addFleetCabezal").focus();
+}
+
+function closeAddFleetModal() {
+  document.getElementById("addFleetModal").classList.remove("active");
+}
+
+function saveAddFleet() {
+  const cabezal = document.getElementById("addFleetCabezal").value.trim().toUpperCase();
+  const remolque = document.getElementById("addFleetRemolque").value.trim().toUpperCase();
+  const cist = document.getElementById("addFleetCist").value.trim().toUpperCase();
+  const ejes = parseInt(document.getElementById("addFleetEjes").value);
+  const conductor = document.getElementById("addFleetConductor").value.trim().toUpperCase();
+  const dotacion = document.getElementById("addFleetDotacion").value;
+  const estado = document.getElementById("addFleetEstado").value;
+  const obs = document.getElementById("addFleetObs").value.trim();
+  if (!cabezal || !conductor || !cist) {
+    alert("Placa cabezal, conductor y cisterna son obligatorios.");
+    return;
+  }
+  const maxId = fleetData.reduce((m, v) => Math.max(m, v.id), 0);
+  const ahora = new Date();
+  fleetData.push({
+    id: maxId + 1,
+    cabezal,
+    remolque,
+    cist,
+    ejes,
+    conductor,
+    dotacion,
+    estado,
+    obs,
+    fechaCambio: '',
+    horaCambio: '',
+    lastChange: ahora.toLocaleString("es-HN")
+  });
+  saveFleet(fleetData);
+  closeAddFleetModal();
+  renderTable();
+  showToast(`➕ ${cabezal} (${cist}) agregado a la flota`);
+}
+
+function eliminarFlotaSeleccionado() {
+  if (selectedFleetId === null) return;
+  const v = fleetData.find(x => x.id === selectedFleetId);
+  if (!v) return;
+  if (!confirm(`¿Eliminar ${v.cabezal} (${v.cist}) - ${v.conductor} de la flota?`)) return;
+  fleetData = fleetData.filter(x => x.id !== selectedFleetId);
+  selectedFleetId = null;
+  saveFleet(fleetData);
+  renderTable();
+  showToast(`🗑️ ${v.cabezal} (${v.cist}) eliminado de la flota`);
 }
 
 function openStatusModal() {
