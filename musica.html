@@ -83,6 +83,8 @@ summary{cursor:pointer;color:var(--accent);font-weight:600}
 details ol{margin:8px 0 0;padding-left:18px;line-height:1.7}
 code{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:5px;font-size:11.5px;word-break:break-all}
 .cargando{text-align:center;padding:40px;color:var(--sub);font-size:14px}
+#toast{position:fixed;left:50%;bottom:125px;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;background:rgba(17,17,17,.95);color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;z-index:90;transition:all .25s;max-width:82%;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
 <body>
@@ -143,12 +145,12 @@ code{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:5px;font-siz
     <label>¿Cómo subes las canciones?</label>
     <div class="modes">
       <label class="mode-opt">
-        <input type="radio" name="modo" value="release" checked>
-        <span><b>Lanzamiento (Release)</b><br><small>✅ Soportado para muchos archivos / grandes</small></span>
+        <input type="radio" name="modo" value="folder">
+        <span><b>Carpeta del repositorio</b><br><small>✅ Recomendada: funciona en iPhone</small></span>
       </label>
       <label class="mode-opt">
-        <input type="radio" name="modo" value="folder">
-        <span><b>Carpeta del repositorio</b><br><small>Para pocos archivos pequeños</small></span>
+        <input type="radio" name="modo" value="release">
+        <span><b>Lanzamiento (Release)</b><br><small>❌ No reproduce en iPhone (lo bloquea iOS)</small></span>
       </label>
     </div>
     <label>Tu usuario de GitHub</label>
@@ -199,6 +201,7 @@ code{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:5px;font-siz
 </div>
 
 <audio id="audio" preload="metadata"></audio>
+<div id="toast"></div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -208,6 +211,15 @@ const audio = $("audio");
 const CFG_KEY = "musica_config";
 const SONGS_KEY = "musica_canciones";
 const MINI_KEY = "musica_mini";  // manual songs (not from GitHub scan)
+
+function toast(msg) {
+  const el = $("toast");
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(window.__toastT);
+  window.__toastT = setTimeout(() => el.classList.remove("show"), 3200);
+}
 
 let config = loadCfg();
 let canciones = [];
@@ -273,7 +285,7 @@ function songDesde(archivo, url, id) {
 
 async function escanearGitHub(cfg) {
   $("loading").classList.remove("hidden");
-  const modo = cfg.mode || "release";
+  const modo = cfg.mode || "folder";
   let encontradas = [];
 
   try {
@@ -385,10 +397,15 @@ function playIndex(i, restoreTime) {
   $("pArtist").textContent = c.artista || "Desconocido";
   audio.src = c.url;
   audio.volume = (parseInt($("vol").value, 10) || 80) / 100;
+  audio.load();
   audio.play().then(() => {
     if (typeof restoreTime === "number" && restoreTime > 0 && restoreTime < audio.duration)
       audio.currentTime = restoreTime;
-  }).catch(() => {});
+  }).catch(() => {
+    if (/(iP(hone|ad|od))/.test(navigator.userAgent || "")) {
+      toast("Toca la canción otra vez y, si el iPhone lo pide, desbloquéalo");
+    }
+  });
   render();
   updateMediaSession();
 }
@@ -481,7 +498,7 @@ $("search").addEventListener("input", render);
 /* ========== Settings ========== */
 function abrirSettings() {
   $("settingsModal").classList.remove("hidden");
-  const m = config && config.mode ? config.mode : "release";
+  const m = config && config.mode ? config.mode : "folder";
   document.querySelector('input[name="modo"][value="' + m + '"]').checked = true;
   if (config) {
     $("cfgOwner").value = config.owner || "";
