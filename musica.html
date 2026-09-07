@@ -72,6 +72,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
 #btnGuardar{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
 #btnCancelar{background:var(--card2);color:var(--txt)}
 .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:0;cursor:pointer;padding:13px;font-size:15px;font-weight:700;border-radius:12px;width:100%}
+.modes{margin-bottom:8px}
+.mode-opt{display:flex;gap:10px;align-items:flex-start;background:var(--card2);border:2px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 12px;margin-bottom:8px;font-size:14px;cursor:pointer;line-height:1.3}
+.mode-opt input{accent-color:var(--accent);transform:scale(1.4);margin-top:4px}
+.mode-opt small{color:var(--sub);font-size:12px}
+.mode-opt:has(input:checked){border-color:var(--accent);background:rgba(139,92,246,.12)}
 details{margin-top:12px;background:var(--card2);border-radius:12px;padding:10px 12px;font-size:12.5px;color:var(--sub)}
 summary{cursor:pointer;color:var(--accent);font-weight:600}
 details ol{margin:8px 0 0;padding-left:18px;line-height:1.7}
@@ -133,37 +138,47 @@ code{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:5px;font-siz
 
 <div id="settingsModal" class="modal hidden">
   <div class="modal-box">
-    <h2>⚙️ Configurar carpeta de música</h2>
-    <p style="font-size:13px;color:var(--sub);margin:0 0 12px;line-height:1.5">
-      Conecta una carpeta de tu repositorio de GitHub y la app cargará automáticamente todos los .mp3 que subas ahí.
-    </p>
+    <h2>⚙️ Configurar tu música</h2>
+    <label>¿Cómo subes las canciones?</label>
+    <div class="modes">
+      <label class="mode-opt">
+        <input type="radio" name="modo" value="release" checked>
+        <span><b>Lanzamiento (Release)</b><br><small>✅ Soportado para muchos archivos / grandes</small></span>
+      </label>
+      <label class="mode-opt">
+        <input type="radio" name="modo" value="folder">
+        <span><b>Carpeta del repositorio</b><br><small>Para pocos archivos pequeños</small></span>
+      </label>
+    </div>
     <label>Tu usuario de GitHub</label>
-    <input id="cfgOwner" type="text" placeholder="ej: tdjos" autocomplete="off">
+    <input id="cfgOwner" type="text" placeholder="ej: tdjrto" autocomplete="off">
     <label>Nombre del repositorio</label>
-    <input id="cfgRepo" type="text" placeholder="ej: musica-cgc" autocomplete="off">
-    <label>Carpeta donde están los MP3</label>
-    <input id="cfgFolder" type="text" placeholder="ej: canciones (vacío = raíz del repo)" autocomplete="off">
+    <input id="cfgRepo" type="text" placeholder="ej: flota-cgc" autocomplete="off">
+    <label id="lblCarpeta" style="display:none">Carpeta donde están los MP3</label>
+    <input id="cfgFolder" type="text" placeholder="ej: canciones (vacío = raíz del repo)" style="display:none" autocomplete="off">
     <div class="btn-row">
       <button id="btnCfgGuardar" style="flex:2">Guardar y cargar</button>
       <button id="btnCfgCancelar" style="flex:1">Cancelar</button>
     </div>
     <details>
-      <summary>📤 ¿Cómo preparo mi repositorio?</summary>
+      <summary>📤 ¿Cómo subo mis canciones como "Lanzamiento" (Release)?</summary>
       <ol>
-        <li>Ve a <code>github.com</code> y crea un repositorio (puede ser público o privado).</li>
-        <li>En la pestaña <b>Upload files</b>, sube tus archivos .mp3 a una carpeta (puedes crearla al subir).</li>
-        <li>Clic en <b>Commit changes</b>.</li>
-        <li>Aquí pon tu <b>usuario</b>, <b>nombre del repo</b> y <b>carpeta</b>.</li>
-        <li>Para agregar más canciones, solo sube más .mp3 a esa carpeta y pulsa <b>🔄</b>.</li>
+        <li>Ve a <b>github.com/TU-USUARIO/TU-REPO</b>.</li>
+        <li>Derecha, clic en <b>Create a new release</b>.</li>
+        <li>En <b>Choose a tag</b> escribe <code>v1</code> → <b>Create new tag</b>.</li>
+        <li>Abajo en <b>Assets</b>: "Attach binaries by <b>dropping files here</b>".<br>Arrastra ahí tus .mp3 (pueden ser muchos).</li>
+        <li>Pulsa <b>Publish release</b>.</li>
+        <li>Aquí pon tu <b>usuario</b> y <b>repo</b>, y la app cargará LA ÚLTIMA release automáticamente.</li>
+        <li>Para agregar más: crea otra release (v2, v3...) con los nuevos .mp3 y pulsa <b>🔄</b>.</li>
       </ol>
     </details>
     <details style="margin-top:8px">
-      <summary>ℹ️ Ejemplo</summary>
+      <summary>ℹ️ Tu configuración</summary>
       <p style="margin:6px 0 0;font-size:12px;color:var(--sub)">
-        Usuario: <code>miusuario</code><br>
-        Repo: <code>musica-cgc</code><br>
-        Carpeta: <code>canciones</code><br><br>
-        Resultado: la app escanea <code>github.com/miusuario/musica-cgc/tree/main/canciones</code>
+        Usuario: <code>tdjrto</code><br>
+        Repo: <code>flota-cgc</code><br>
+        Modo: <code>Release</code><br><br>
+        La app leerá <code>api.github.com/repos/tdjrto/flota-cgc/releases/latest</code>
       </p>
     </details>
   </div>
@@ -243,45 +258,47 @@ async function guardarNube(clave, datos) {
 }
 
 /* ========== Escaneo GitHub ========== */
+function songDesde(archivo, url, id) {
+  let titulo = archivo.replace(/\.mp3$/i, "");
+  if (!titulo.includes(" ")) titulo = titulo.replace(/\./g, " ");
+  let artista = "Desconocido";
+  if (titulo.includes(" - ")) {
+    const parts = titulo.split(" - ");
+    artista = parts[0].trim();
+    titulo = parts.slice(1).join(" - ").trim();
+  }
+  return { id: id, titulo: titulo, artista: artista, url: url, fromGitHub: true };
+}
+
 async function escanearGitHub(cfg) {
-  const folder = (cfg.folder || "").replace(/^\/+|\/+$/g, "");
-  const apiUrl = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${folder}`;
   $("loading").classList.remove("hidden");
+  const modo = cfg.mode || "release";
+  let encontradas = [];
 
   try {
-    const resp = await fetch(apiUrl);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const items = await resp.json();
+    if (modo === "release") {
+      const resp = await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/releases/latest`);
+      if (!resp.ok) throw new Error("No hay ninguna Release (lanzamiento) publicada todavía. Crea una en GitHub → Releases → Draft a new release.");
+      const rel = await resp.json();
+      const assets = (rel.assets || []).filter(a => a.name.toLowerCase().endsWith(".mp3"));
+      encontradas = assets.map(a => songDesde(a.name, a.browser_download_url, a.id));
+    } else {
+      const folder = (cfg.folder || "").replace(/^\/+|\/+$/g, "");
+      const resp = await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${folder}`);
+      if (!resp.ok) throw new Error("No se pudo abrir la carpeta (HTTP " + resp.status + "). Verifica que exista y que el repo sea público.");
+      const items = await resp.json();
+      encontradas = items
+        .filter(f => f.type === "file" && f.name.toLowerCase().endsWith(".mp3"))
+        .map(f => songDesde(f.name, f.download_url, f.sha));
+    }
 
-    const mp3s = items.filter(f =>
-      f.type === "file" && f.name.toLowerCase().endsWith(".mp3")
-    );
-
-    const encontradas = mp3s.map(f => {
-      let titulo = f.name.replace(/\.mp3$/i, "");
-      let artista = "Desconocido";
-      if (titulo.includes(" - ")) {
-        const parts = titulo.split(" - ");
-        artista = parts[0].trim();
-        titulo = parts.slice(1).join(" - ").trim();
-      }
-      return {
-        id: f.sha,
-        titulo: titulo,
-        artista: artista,
-        url: f.download_url,
-        fromGitHub: true
-      };
-    });
-
-    // merge with manual songs
     canciones = [...encontradas, ...miniSongs];
     render();
     $("loading").classList.add("hidden");
     return encontradas.length;
   } catch (e) {
     $("loading").classList.add("hidden");
-    alert("No se pudo escanea la carpeta.\n\nVerifica:\n- Tu usuario de GitHub\n- Nombre del repo (debe ser público)\n- Nombre de la carpeta\n\nError: " + e.message);
+    alert("No se pudo cargar.\n\n" + e.message + "\n\nGuía: en GitHub crea una Release y arrastra tus .mp3 en \"Attach binaries\".");
     return 0;
   }
 }
@@ -315,9 +332,9 @@ function renderEmptyZone() {
         <ol>
           <li>Crea un repositorio en <b>github.com</b></li>
           <li>Sube tus archivos <b>.mp3</b> a una carpeta</li>
-          <li>Pulsa <b>⚙️</b> y pon tu usuario, repo y carpeta</li>
+          <li>Pulsa <b>⚙️</b> y pon tu usuario y repositorio</li>
         </ol>
-        <button class="btn-primary" onclick="abrirSettings()" style="max-width:260px;margin:0 auto">⚙️ Configurar mi carpeta</button>
+        <button class="btn-primary" onclick="abrirSettings()" style="max-width:260px;margin:0 auto">⚙️ Configurar mi música</button>
       </div>`;
   }
 }
@@ -463,20 +480,30 @@ $("search").addEventListener("input", render);
 /* ========== Settings ========== */
 function abrirSettings() {
   $("settingsModal").classList.remove("hidden");
+  const m = config && config.mode ? config.mode : "release";
+  document.querySelector('input[name="modo"][value="' + m + '"]').checked = true;
   if (config) {
     $("cfgOwner").value = config.owner || "";
     $("cfgRepo").value = config.repo || "";
     $("cfgFolder").value = config.folder || "";
   }
+  toggleCarpetaVisible();
 }
 $("btnSettings").onclick = abrirSettings;
 $("btnCfgCancelar").onclick = () => $("settingsModal").classList.add("hidden");
+function toggleCarpetaVisible() {
+  const esFolder = document.querySelector('input[name="modo"]:checked').value === "folder";
+  $("lblCarpeta").style.display = esFolder ? "block" : "none";
+  $("cfgFolder").style.display = esFolder ? "block" : "none";
+}
+document.querySelectorAll('input[name="modo"]').forEach(r => r.onchange = toggleCarpetaVisible);
 $("btnCfgGuardar").onclick = async () => {
   const owner = $("cfgOwner").value.trim().replace(/^@/, "");
   const repo = $("cfgRepo").value.trim();
   const folder = $("cfgFolder").value.trim();
+  const modo = document.querySelector('input[name="modo"]:checked').value;
   if (!owner || !repo) { alert("Pon tu usuario y nombre del repositorio"); return; }
-  config = { owner, repo, folder };
+  config = { owner, repo, folder, mode: modo };
   saveCfg();
   await guardarNube("musica_config", config);
   $("settingsModal").classList.add("hidden");
