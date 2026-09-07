@@ -1,6 +1,6 @@
 {
-  "name": "Música CGC",
-  "short_name": "Música",
+  "name": "Música Josse",
+  "short_name": "Josse",
   "description": "Reproductor de música desde la nube",
   "start_url": "musica.html",
   "scope": ".",
@@ -10,20 +10,16 @@
   "theme_color": "#8b5cf6",
   "icons": [
     {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icon-192.png",
+      "src": "icon-musica-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "icon-512.png",
+      "src": "icon-musica-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
