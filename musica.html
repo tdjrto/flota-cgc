@@ -17,7 +17,7 @@ html,body{margin:0;padding:0}
 body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;min-height:100vh;padding-bottom:150px;-webkit-font-smoothing:antialiased}
 button{font-family:inherit}
 /* ===== Header ===== */
-header{position:sticky;top:0;z-index:20;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding:16px 18px 10px;background:rgba(0,0,0,.7);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+header{position:sticky;top:0;z-index:20;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding:calc(14px + env(safe-area-inset-top)) 18px 10px;background:rgba(0,0,0,.7);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
 .brand{display:flex;align-items:center;gap:11px;min-width:0}
 .logo{width:42px;height:42px;flex:none;display:grid;place-items:center;font-size:20px;color:#fff;background:linear-gradient(135deg,var(--accent),#c81e3a);border-radius:12px;box-shadow:0 6px 18px rgba(250,45,72,.35)}
 .brand h1{font-size:22px;margin:0;font-weight:800;letter-spacing:-.3px}
