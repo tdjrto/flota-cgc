@@ -136,6 +136,10 @@
   .btn-image:hover { background: #7b1fa2; color: #fff; }
   .btn-hist { border-color: #00897b; color: #00897b; }
   .btn-hist:hover { background: #00897b; color: #fff; }
+  .btn-cist { border-color: #6a1b9a; color: #6a1b9a; }
+  .btn-cist:hover { background: #6a1b9a; color: #fff; }
+  .btn-acoplar { border-color: var(--accent); color: var(--accent); }
+  .btn-acoplar:hover { background: var(--accent); color: #fff; }
   .btn-add { border-color: var(--success); color: var(--success); }
   .btn-add:hover { background: var(--success); color: #fff; }
   .table-wrap {
@@ -502,6 +506,7 @@
   <button class="btn btn-image" onclick="exportarImagen()">🖼️ Exportar Imagen</button>
   <button class="btn btn-db" onclick="openDBModal()">🗄️ Asignación de Cisternas</button>
   <button class="btn btn-hist" onclick="openHistorialSection()">📜 Historial</button>
+  <button class="btn btn-cist" onclick="openCisternasModal()">🗂️ Catálogo Cisternas</button>
   <input type="text" id="buscarFlota" placeholder="🔍 Buscar placa, conductor, cisterna..." oninput="renderTable()" style="flex:1;min-width:220px;max-width:340px">
 </div>
 
@@ -519,6 +524,7 @@
         <th>Estado</th>
         <th>Observación</th>
         <th>Asignación</th>
+        <th>Acoplar</th>
       </tr>
     </thead>
     <tbody id="flotaBody"></tbody>
@@ -810,6 +816,83 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- Modal Acoplar Cisterna -->
+<div class="modal-overlay" id="acoplarModal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <h2>⇄ Acoplar cisterna</h2>
+      <button class="modal-close" onclick="closeAcoplarModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p id="acoplarInfo" style="color:var(--text-dim);font-size:0.85rem;margin-bottom:1rem;padding:0.5rem 0.8rem;background:#f8fafc;border-radius:6px;border:1px solid var(--border)"></p>
+      <table class="db-table">
+        <thead>
+          <tr>
+            <th>Cisterna</th>
+            <th>Placa Remolque</th>
+            <th>Ejes</th>
+            <th>Actualmente</th>
+          </tr>
+        </thead>
+        <tbody id="acoplarBody"></tbody>
+      </table>
+      <div id="acoplarNoRes" style="display:none;text-align:center;color:var(--text-dim);padding:1.5rem">No hay cisternas en el catálogo.<br>Agrégalas en el botón 🗂️ Catálogo Cisternas.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Catálogo de Cisternas -->
+<div class="modal-overlay" id="cistModal">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-header">
+      <h2>🗂️ Catálogo de Cisternas</h2>
+      <button class="modal-close" onclick="closeCisternasModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="db-form" id="cistForm">
+        <h3 id="cistFormTitle">Agregar cisterna</h3>
+        <input type="hidden" id="cistEditId" value="">
+        <div class="form-row">
+          <div class="form-group" style="max-width:130px">
+            <label>Cisterna</label>
+            <input type="text" id="cistInCist" placeholder="Ej: A06" maxlength="4" style="text-transform:uppercase">
+          </div>
+          <div class="form-group">
+            <label>Placa Remolque</label>
+            <input type="text" id="cistInRemolque" placeholder="Ej: TRA-2558" maxlength="10" style="text-transform:uppercase">
+          </div>
+          <div class="form-group" style="max-width:100px">
+            <label># Ejes</label>
+            <select id="cistInEjes">
+              <option value="2">2</option>
+              <option value="3">3</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-btns">
+          <button class="btn-save" onclick="saveCist()">Guardar</button>
+          <button class="btn-cancel" onclick="hideCistForm()">Cancelar</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-add" onclick="showAddCistForm()">+ Agregar cisterna</button>
+      </div>
+      <table class="db-table">
+        <thead>
+          <tr>
+            <th>No.</th>
+            <th>Cisterna</th>
+            <th>Placa Remolque</th>
+            <th>Ejes</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="cistBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <script>
 const ESTADOS = ["A CARGA", "PRECARGADO", "CARGADO", "NO DISPONIBLE"];
 
@@ -901,6 +984,11 @@ async function sincronizar() {
     if (h) {
       localStorage.setItem("flota_historial", JSON.stringify(h));
       historial = h;
+    }
+    const c = await cargarDeFirebase("cisternas");
+    if (c && c.length) {
+      localStorage.setItem("flota_cisternas", JSON.stringify(c));
+      cisternas = c;
     }
     servidorConectado = true;
     document.getElementById("syncStatus").textContent = "● Nube";
@@ -1228,14 +1316,14 @@ function renderTable() {
     const stClass = getStatusClass(st);
     const dotClass = v.dotacion === "SOPLADOR" ? "dotacion-sop" : "dotacion-senc";
     const asignado = vehicleDB.find(x => x.cist === v.cist);
-    const asignacion = asignado ? asignado.cabezal : '—';
+    const asignacion = v.cist ? (asignado ? asignado.cabezal : '—') : '—';
     const isSelected = selectedFleetId === v.id;
     return `<tr class="${isSelected ? 'selected' : ''}" onclick="selectFleetRow(${v.id})">
       <td style="color:var(--text-dim);font-weight:600">${i+1}</td>
       <td><span class="placa">${v.cabezal}</span></td>
-      <td><span class="placa">${v.remolque}</span></td>
-      <td><span class="cist-num">${v.cist}</span></td>
-      <td style="text-align:center;font-weight:700">${v.ejes}</td>
+      <td><span class="placa">${v.remolque || '—'}</span></td>
+      <td><span class="cist-num" style="${v.cist ? '' : 'opacity:.35'}">${v.cist || '—'}</span></td>
+      <td style="text-align:center;font-weight:700">${v.ejes ? v.ejes : '—'}</td>
       <td>
         <span class="conductor">${v.conductor}</span>
         ${v.fechaCambio ? `<div class="last-change">Actualizacion: ${formatearFecha(v.fechaCambio)}${v.horaCambio ? ' ' + formatearHora(v.horaCambio) : ''}</div>` : ''}
@@ -1244,6 +1332,7 @@ function renderTable() {
       <td><span class="status-select ${stClass}">${st}</span></td>
       <td><span class="obs-cell" title="${v.obs || ''}">${v.obs || '—'}</span></td>
       <td><span class="placa" style="color:var(--accent)">${asignacion}</span></td>
+      <td><button class="btn-icon btn-acoplar" title="Acoplar cisterna" onclick="event.stopPropagation();openAcoplarModal(${v.id})">⇄</button></td>
     </tr>`;
   }).join("");
   updateStats();
@@ -1307,6 +1396,7 @@ function saveEditFleet() {
   v.ejes = ejes;
   v.conductor = conductor;
   v.dotacion = dotacion;
+  sincronizarCatalogo(cist, remolque, ejes);
   saveFleet(fleetData);
   closeEditFleetModal();
   renderTable();
@@ -1359,6 +1449,7 @@ function saveAddFleet() {
     horaCambio: '',
     lastChange: ahora.toLocaleString("es-HN")
   });
+  sincronizarCatalogo(cist, remolque, ejes);
   saveFleet(fleetData);
   closeAddFleetModal();
   renderTable();
@@ -1613,6 +1704,198 @@ vehicleDB.forEach(v => {
 });
 saveDB(vehicleDB);
 
+/* ========== CATÁLOGO DE CISTERNAS (fijas) ========== */
+const defaultCisternas = (function () {
+  const map = new Map();
+  defaultDB.forEach(v => {
+    if (v.cist && !map.has(v.cist)) map.set(v.cist, { cist: v.cist, remolque: v.remolque, ejes: v.ejes });
+  });
+  const num = x => parseInt(x.replace(/\D/g, '')) || 0;
+  return [...map.values()].sort((a, b) => num(a.cist) - num(b.cist));
+})();
+
+function loadCisternas() {
+  const s = localStorage.getItem("flota_cisternas");
+  if (s) { try { return JSON.parse(s); } catch (e) {} }
+  return JSON.parse(JSON.stringify(defaultCisternas));
+}
+let cisternas = loadCisternas();
+function saveCisternas() {
+  localStorage.setItem("flota_cisternas", JSON.stringify(cisternas));
+  guardarNube("cisternas", cisternas);
+}
+function cistInfo(cist) {
+  return cisternas.find(x => x.cist === cist) || null;
+}
+function sincronizarCatalogo(cist, remolque, ejes) {
+  if (!cist) return;
+  const x = cistInfo(cist);
+  if (x) {
+    if (remolque) x.remolque = remolque;
+    if (ejes) x.ejes = ejes;
+  } else {
+    cisternas.push({ cist: cist, remolque: remolque || "", ejes: ejes || 2 });
+  }
+  saveCisternas();
+}
+
+function renderCistTable() {
+  const tb = document.getElementById("cistBody");
+  if (!tb) return;
+  const num = x => parseInt(x.replace(/\D/g, '')) || 0;
+  const sorted = [...cisternas].sort((a, b) => num(a.cist) - num(b.cist));
+  if (!sorted.length) {
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:2rem">No hay cisternas registradas. Agrega con "+ Agregar cisterna".</td></tr>';
+    return;
+  }
+  tb.innerHTML = sorted.map((x, i) => `
+    <tr>
+      <td style="color:var(--text-dim);font-weight:600">${i + 1}</td>
+      <td><span class="cist-num">${x.cist}</span></td>
+      <td><span class="placa">${x.remolque}</span></td>
+      <td style="text-align:center">${x.ejes}</td>
+      <td>
+        <div class="db-actions">
+          <button class="btn-icon btn-edit" title="Editar" onclick="editCist('${x.cist}')">✎</button>
+          <button class="btn-icon btn-del" title="Eliminar" onclick="deleteCist('${x.cist}')">✕</button>
+        </div>
+      </td>
+    </tr>`).join("");
+}
+
+function openCisternasModal() {
+  document.getElementById("cistModal").classList.add("active");
+  renderCistTable();
+}
+function closeCisternasModal() {
+  document.getElementById("cistModal").classList.remove("active");
+  hideCistForm();
+}
+function showAddCistForm() {
+  document.getElementById("cistFormTitle").textContent = "Agregar cisterna";
+  document.getElementById("cistEditId").value = "";
+  document.getElementById("cistInCist").value = "";
+  document.getElementById("cistInRemolque").value = "";
+  document.getElementById("cistInEjes").value = "2";
+  document.getElementById("cistForm").classList.add("active");
+  document.getElementById("cistInCist").focus();
+}
+function hideCistForm() {
+  document.getElementById("cistForm").classList.remove("active");
+}
+function editCist(cist) {
+  const x = cistInfo(cist);
+  if (!x) return;
+  document.getElementById("cistFormTitle").textContent = "Editar cisterna";
+  document.getElementById("cistEditId").value = x.cist;
+  document.getElementById("cistInCist").value = x.cist;
+  document.getElementById("cistInRemolque").value = x.remolque;
+  document.getElementById("cistInEjes").value = String(x.ejes);
+  document.getElementById("cistForm").classList.add("active");
+  document.getElementById("cistInRemolque").focus();
+}
+function saveCist() {
+  const cist = document.getElementById("cistInCist").value.trim().toUpperCase();
+  const remolque = document.getElementById("cistInRemolque").value.trim().toUpperCase();
+  const ejes = parseInt(document.getElementById("cistInEjes").value, 10);
+  const editId = document.getElementById("cistEditId").value;
+  if (!cist) { alert("Pon el código de la cisterna (ej: A06)"); return; }
+  if (!remolque) { alert("Pon la placa del remolque (ej: TRA-2558)"); return; }
+  if (editId) {
+    const x = cistInfo(editId);
+    if (x) { x.cist = cist; x.remolque = remolque; x.ejes = ejes; }
+  } else {
+    if (cistInfo(cist)) { alert("Esa cisterna ya existe en el catálogo"); return; }
+    cisternas.push({ cist: cist, remolque: remolque, ejes: ejes });
+  }
+  saveCisternas();
+  hideCistForm();
+  renderCistTable();
+  showToast("🗂️ Cisterna " + cist + " guardada en el catálogo");
+}
+function deleteCist(cist) {
+  const enUso = fleetData.find(v => v.cist === cist);
+  if (enUso) { alert("No se puede eliminar: la cisterna " + cist + " está acoplada a " + enUso.cabezal); return; }
+  if (!confirm("¿Eliminar la cisterna " + cist + " del catálogo?")) return;
+  cisternas = cisternas.filter(x => x.cist !== cist);
+  saveCisternas();
+  renderCistTable();
+  showToast("🗑️ Cisterna " + cist + " eliminada del catálogo");
+}
+
+/* ========== ACOPLAR CISTERNA ========== */
+let acoplarTargetId = null;
+function openAcoplarModal(id) {
+  const v = fleetData.find(x => x.id === id);
+  if (!v) return;
+  acoplarTargetId = id;
+  document.getElementById("acoplarInfo").textContent =
+    v.cabezal + " — " + v.conductor + (v.cist ? " (actual: " + v.cist + ")" : " (sin cisterna)");
+  renderAcoplarList();
+  document.getElementById("acoplarModal").classList.add("active");
+}
+function closeAcoplarModal() {
+  document.getElementById("acoplarModal").classList.remove("active");
+  acoplarTargetId = null;
+}
+function renderAcoplarList() {
+  const tb = document.getElementById("acoplarBody");
+  const noRes = document.getElementById("acoplarNoRes");
+  if (!tb || !noRes) return;
+  const num = x => parseInt(x.replace(/\D/g, '')) || 0;
+  const sorted = [...cisternas].sort((a, b) => num(a.cist) - num(b.cist));
+  if (!sorted.length) { tb.innerHTML = ""; noRes.style.display = "block"; return; }
+  noRes.style.display = "none";
+  tb.innerHTML = sorted.map(x => {
+    const owner = fleetData.find(v => v.cist === x.cist);
+    const owned = owner
+      ? (owner.id === acoplarTargetId ? "✅ Este cabezal" : owner.cabezal)
+      : "Libre";
+    return `<tr style="cursor:pointer" onclick="acoplarCisterna('${x.cist}')">
+      <td><span class="cist-num">${x.cist}</span></td>
+      <td><span class="placa">${x.remolque}</span></td>
+      <td style="text-align:center">${x.ejes}</td>
+      <td style="color:${owner && owner.id !== acoplarTargetId ? 'var(--warning)' : 'var(--text-dim)'};font-weight:600">${owned}</td>
+    </tr>`;
+  }).join("");
+}
+function acoplarCisterna(cist) {
+  const v = fleetData.find(x => x.id === acoplarTargetId);
+  if (!v) return;
+  if (v.cist === cist) { closeAcoplarModal(); return; }
+  const info = cistInfo(cist);
+  if (!info) { showToast("Esa cisterna no está en el catálogo"); return; }
+  const anterior = fleetData.find(x => x.cist === cist);
+  const desde = anterior ? anterior.cabezal : "ninguno";
+  if (anterior) {
+    anterior.cist = ""; anterior.remolque = ""; anterior.ejes = 0;
+    anterior.lastChange = new Date().toLocaleString("es-HN");
+    const dbAnt = vehicleDB.find(x => x.cabezal === anterior.cabezal);
+    if (dbAnt) { dbAnt.cist = ""; dbAnt.remolque = ""; dbAnt.ejes = 0; }
+  }
+  v.cist = info.cist; v.remolque = info.remolque; v.ejes = info.ejes;
+  const ahora = new Date();
+  const fecha = ahora.toISOString().slice(0, 10);
+  const hora = String(ahora.getHours()).padStart(2, "0") + ":" + String(ahora.getMinutes()).padStart(2, "0");
+  v.fechaCambio = fecha; v.horaCambio = hora;
+  v.lastChange = ahora.toLocaleString("es-HN");
+  v.obs = "Cisterna " + cist + " movida de " + desde + " a " + v.cabezal;
+  const dbRow = vehicleDB.find(x => x.cabezal === v.cabezal);
+  if (dbRow) { dbRow.cist = info.cist; dbRow.remolque = info.remolque; dbRow.ejes = info.ejes; }
+  historial.push({
+    fecha: fecha, hora: hora,
+    cabezal: v.cabezal, remolque: v.remolque, cist: v.cist, ejes: v.ejes,
+    conductor: v.conductor, dotacion: v.dotacion, estado: v.estado,
+    obs: v.obs, asignacion: v.cabezal, lastChange: v.lastChange
+  });
+  saveHistorial();
+  saveFleet(fleetData);
+  saveDB(vehicleDB);
+  closeAcoplarModal();
+  renderTable();
+  showToast("🔄 Cisterna " + cist + " acoplada a " + v.cabezal);
+}
+
 function openDBModal() {
   document.getElementById("dbModal").classList.add("active");
   renderDBTable();
@@ -1717,6 +2000,7 @@ async function saveVehicle() {
       v.ejes = ejes;
       v.dotacion = dotacion;
       v.propietario = propietario;
+      sincronizarCatalogo(cist, remolque, ejes);
       saveDB(vehicleDB);
       await guardarNube("vehiculos", vehicleDB);
       showToast(`✏️ ${cabezal} actualizado`);
@@ -1724,6 +2008,7 @@ async function saveVehicle() {
   } else {
     const maxId = vehicleDB.reduce((m, v) => Math.max(m, v.id), 0);
     vehicleDB.push({ id: maxId + 1, cabezal, remolque, cist, ejes, conductor, dotacion, propietario });
+    sincronizarCatalogo(cist, remolque, ejes);
     saveDB(vehicleDB);
     await guardarNube("vehiculos", vehicleDB);
     showToast(`➕ ${cabezal} (${cist}) agregado a la asignación de cisternas`);
@@ -1754,6 +2039,9 @@ async function deleteVehicle(id) {
   if (!vehicleDB || vehicleDB.length === 0) {
     vehicleDB = loadDB();
   }
+  if (!cisternas || !cisternas.length) {
+    cisternas = loadCisternas();
+  }
   let cambio = false;
   fleetData.forEach(v => {
     if (v.horaCambio) {
@@ -1765,6 +2053,7 @@ async function deleteVehicle(id) {
   saveFleet(fleetData);
   if (dbRef) guardarNube("vehiculos", vehicleDB);
   if (dbRef) guardarNube("historial", historial);
+  if (dbRef) guardarNube("cisternas", cisternas);
   renderTable();
 })();
 
