@@ -1461,11 +1461,18 @@ function eliminarFlotaSeleccionado() {
   const v = fleetData.find(x => x.id === selectedFleetId);
   if (!v) return;
   if (!confirm(`¿Eliminar ${v.cabezal} (${v.cist}) - ${v.conductor} de la flota?`)) return;
+  const cistElim = v.cist;
   fleetData = fleetData.filter(x => x.id !== selectedFleetId);
   selectedFleetId = null;
+  let cistBorrada = "";
+  if (cistElim && !fleetData.some(x => x.cist === cistElim)) {
+    cisternas = cisternas.filter(x => x.cist !== cistElim);
+    cistBorrada = cistElim;
+  }
   saveFleet(fleetData);
+  if (cistBorrada) saveCisternas();
   renderTable();
-  showToast(`🗑️ ${v.cabezal} (${v.cist}) eliminado de la flota`);
+  showToast(`🗑️ ${v.cabezal} (${v.cist}) eliminado de la flota` + (cistBorrada ? ` · cisterna ${cistBorrada} fuera del catálogo` : ""));
 }
 
 function openStatusModal() {
@@ -1738,6 +1745,21 @@ function sincronizarCatalogo(cist, remolque, ejes) {
   }
   saveCisternas();
 }
+function reconciliarCatalogo() {
+  let cambio = false;
+  fleetData.forEach(v => {
+    if (!v.cist) return;
+    const x = cistInfo(v.cist);
+    if (!x) {
+      cisternas.push({ cist: v.cist, remolque: v.remolque || "", ejes: v.ejes || 2 });
+      cambio = true;
+    } else {
+      if (v.remolque && x.remolque !== v.remolque) { x.remolque = v.remolque; cambio = true; }
+      if (v.ejes && x.ejes !== v.ejes) { x.ejes = v.ejes; cambio = true; }
+    }
+  });
+  if (cambio) saveCisternas();
+}
 
 function renderCistTable() {
   const tb = document.getElementById("cistBody");
@@ -1765,6 +1787,7 @@ function renderCistTable() {
 
 function openCisternasModal() {
   document.getElementById("cistModal").classList.add("active");
+  reconciliarCatalogo();
   renderCistTable();
 }
 function closeCisternasModal() {
@@ -2042,6 +2065,7 @@ async function deleteVehicle(id) {
   if (!cisternas || !cisternas.length) {
     cisternas = loadCisternas();
   }
+  reconciliarCatalogo();
   let cambio = false;
   fleetData.forEach(v => {
     if (v.horaCambio) {
