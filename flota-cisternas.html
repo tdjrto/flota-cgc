@@ -1902,14 +1902,14 @@ function acoplarCisterna(cist) {
   const hora = String(ahora.getHours()).padStart(2, "0") + ":" + String(ahora.getMinutes()).padStart(2, "0");
   v.fechaCambio = fecha; v.horaCambio = hora;
   v.lastChange = ahora.toLocaleString("es-HN");
-  v.obs = "Cisterna " + cist + " movida de " + desde + " a " + v.cabezal;
   const dbRow = vehicleDB.find(x => x.cabezal === v.cabezal);
   if (dbRow) { dbRow.cist = info.cist; dbRow.remolque = info.remolque; dbRow.ejes = info.ejes; }
   historial.push({
     fecha: fecha, hora: hora,
     cabezal: v.cabezal, remolque: v.remolque, cist: v.cist, ejes: v.ejes,
     conductor: v.conductor, dotacion: v.dotacion, estado: v.estado,
-    obs: v.obs, asignacion: v.cabezal, lastChange: v.lastChange
+    obs: "Cisterna " + cist + " movida de " + desde + " a " + v.cabezal,
+    asignacion: v.cabezal, lastChange: v.lastChange
   });
   saveHistorial();
   saveFleet(fleetData);
