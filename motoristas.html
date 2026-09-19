@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Motoristas CGC">
+<link rel="manifest" href="manifest-motoristas.json">
+<link rel="icon" href="icon-motorista-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-motorista-180.png">
+<title>Motoristas CGC - Exámenes y Capacitaciones</title>
+<style>
+  :root {
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --border: #dce2eb;
+    --text: #1e293b;
+    --text-dim: #7a8ba3;
+    --accent: #1565c0;
+    --accent-light: #e3f2fd;
+    --success: #2e7d32;
+    --warning: #ef6c00;
+    --danger: #c62828;
+    --info: #5c6bc0;
+    --header-bg: linear-gradient(135deg, #0d47a1, #1565c0);
+    --row-hover: #f5f8fc;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    background: var(--header-bg);
+    padding: 1.2rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    box-shadow: var(--shadow);
+  }
+  header h1 { font-size: 1.4rem; font-weight: 700; color: #fff; letter-spacing: 0.5px; }
+  header h1 span { color: rgba(255,255,255,0.75); font-weight: 400; font-size: 0.9rem; }
+  .stats-bar { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+  .stat-chip {
+    padding: 0.45rem 1rem; border-radius: 20px; font-size: 0.82rem; font-weight: 700;
+    display: flex; align-items: center; gap: 0.5rem;
+    background: rgba(255,255,255,0.2); backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+  .stat-chip .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 4px currentColor; }
+  #syncStatus { font-size:0.82rem; font-weight:700; padding:0.45rem 1rem; border-radius:12px; background:rgba(255,255,255,0.2); color:#94a3b8; white-space:nowrap; border:1px solid rgba(255,255,255,0.15); box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+  .controls {
+    padding: 1rem 2rem; display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: center;
+    background: var(--card); border-bottom: 1px solid var(--border); box-shadow: var(--shadow);
+  }
+  .controls input, .controls select {
+    padding: 0.55rem 1rem; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: 0.85rem; outline: none; cursor: pointer;
+  }
+  .controls input:focus { border-color: var(--accent); }
+  .btn {
+    padding: 0.55rem 1rem; border-radius: 8px; border: 1px solid; background: transparent;
+    font-size: 0.8rem; cursor: pointer; font-weight: 600; transition: all 0.2s;
+  }
+  .btn-add { border-color: var(--success); color: var(--success); }
+  .btn-add:hover { background: var(--success); color: #fff; }
+  .btn-edit-main { border-color: var(--warning); color: var(--warning); }
+  .btn-edit-main:hover:not(:disabled) { background: var(--warning); color: #fff; }
+  .btn-edit-main:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-del { border-color: var(--danger); color: var(--danger); }
+  .btn-del:hover:not(:disabled) { background: var(--danger); color: #fff; }
+  .btn-del:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-doc { border-color: var(--info); color: var(--info); }
+  .btn-doc:hover:not(:disabled) { background: var(--info); color: #fff; }
+  .btn-doc:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-alert { border-color: var(--danger); color: var(--danger); background: #ffebee; }
+  .btn-alert:hover { background: var(--danger); color: #fff; }
+  .btn-tipos { border-color: #00897b; color: #00897b; }
+  .btn-tipos:hover { background: #00897b; color: #fff; }
+  .banner {
+    display: none; margin: 0.9rem 2rem 0; padding: 0.8rem 1.2rem; border-radius: 10px;
+    background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; font-size: 0.85rem; font-weight: 700;
+    cursor: pointer; box-shadow: var(--shadow);
+  }
+  .banner.show { display: block; }
+  .banner .danger { color: var(--danger); }
+  .table-wrap { flex: 1; overflow: auto; padding: 1rem 2rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .table-wrap table { box-shadow: var(--shadow); border-radius: 8px; overflow: hidden; }
+  thead th {
+    background: #0d47a1; color: #fff; font-weight: 700; text-transform: uppercase;
+    font-size: 0.7rem; letter-spacing: 0.8px; padding: 0.8rem 0.7rem; text-align: left;
+    position: sticky; top: 0; z-index: 2; white-space: nowrap;
+  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; cursor: pointer; }
+  tbody tr:hover { background: var(--row-hover); }
+  tbody tr.selected { background: #e3f2fd; border-left: 3px solid var(--accent); }
+  tbody td { padding: 0.65rem 0.7rem; vertical-align: middle; }
+  .nombre { font-weight: 700; font-size: 0.85rem; }
+  .sub { color: var(--text-dim); font-size: 0.72rem; margin-top: 0.15rem; }
+  .estado-tag { padding: 0.2rem 0.55rem; border-radius: 4px; font-size: 0.72rem; font-weight: 700; }
+  .est-act { background: #e8f5e9; color: #2e7d32; }
+  .est-inact { background: #eceff1; color: #546e7a; }
+  .doc-resumen { font-size: 0.78rem; font-weight: 600; }
+  .doc-resumen .bad { color: var(--danger); }
+  .doc-resumen .warn { color: var(--warning); }
+  .doc-resumen .ok { color: var(--success); }
+  .status-select { display: inline-block; padding: 0.25rem 0.65rem; border-radius: 6px; border: 2px solid; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+  .st-vig  { border-color: #2e7d32; color: #2e7d32; background: #e8f5e9; }
+  .st-porv { border-color: #ef6c00; color: #ef6c00; background: #fff3e0; }
+  .st-venc { border-color: #c62828; color: #c62828; background: #ffebee; }
+  .st-sin  { border-color: #90a4ae; color: #607d8b; background: #eceff1; }
+  .no-results { text-align: center; padding: 3rem; color: var(--text-dim); font-size: 1rem; }
+  .btn-icon { width: 30px; height: 28px; border-radius: 6px; border: 1px solid; background: transparent; cursor: pointer; font-size: 0.8rem; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .db-actions { display: flex; gap: 0.4rem; }
+  .btn-edit { border-color: var(--warning); color: var(--warning); }
+  .btn-edit:hover { background: var(--warning); color: var(--bg); }
+  .btn-del { border-color: var(--danger); color: var(--danger); }
+  .btn-del:hover { background: var(--danger); color: #fff; }
+  .btn-open { border-color: var(--info); color: var(--info); }
+  .btn-open:hover { background: var(--info); color: #fff; }
+  .toast {
+    position: fixed; bottom: 1.5rem; right: 1.5rem; padding: 0.8rem 1.5rem; border-radius: 10px;
+    background: var(--success); color: #fff; font-weight: 600; font-size: 0.85rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3); transform: translateY(100px); opacity: 0; transition: all 0.3s; z-index: 200;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.err { background: var(--danger); }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: flex-start; padding: 3vh 1rem; overflow-y: auto; }
+  .modal-overlay.active { display: flex; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 620px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--border); background: #f8fafc; border-radius: 16px 16px 0 0; }
+  .modal-header h2 { font-size: 1.1rem; color: var(--accent); }
+  .modal-close { background: none; border: none; color: var(--text-dim); font-size: 1.5rem; cursor: pointer; padding: 0.2rem 0.5rem; border-radius: 6px; transition: all 0.2s; }
+  .modal-close:hover { background: var(--danger); color: #fff; }
+  .modal-body { padding: 1.5rem; overflow-x: auto; }
+  .form-row { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+  .form-group { display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 160px; }
+  .form-group label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.5px; }
+  .form-group input, .form-group select {
+    padding: 0.5rem 0.8rem; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font-size: 0.85rem; outline: none;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(21,101,192,0.15); }
+  .form-btns { display: flex; gap: 0.6rem; margin-top: 0.5rem; }
+  .btn-save { padding: 0.5rem 1.2rem; border-radius: 6px; border: none; background: var(--success); color: #fff; font-weight: 700; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; }
+  .btn-save:hover { filter: brightness(1.15); }
+  .btn-cancel { padding: 0.5rem 1.2rem; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); font-weight: 600; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; }
+  .btn-cancel:hover { border-color: var(--text); color: var(--text); }
+  .modal-actions { display: flex; gap: 0.6rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .db-form { display: none; background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem; }
+  .db-form.active { display: block; }
+  .db-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .db-table th { background: #0d47a1; color: #fff; font-weight: 700; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.5px; padding: 0.7rem 0.6rem; text-align: left; }
+  .db-table td { padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--border); }
+  .db-table tr:hover { background: var(--row-hover); }
+  .doc-info { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1rem; padding: 0.5rem 0.8rem; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border); }
+  .doc-row td { padding: 0.4rem 0.6rem; }
+  .doc-row input.fecha-txt { width: 100%; min-width: 120px; padding: 0.4rem 0.5rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.8rem; background: var(--card); color: var(--text); letter-spacing: 0.03em; }
+  .doc-row input.fecha-txt:disabled { background: #f1f3f5; color: var(--text-dim); cursor: default; }
+  .doc-row .extra-select { width: 100%; min-width: 110px; padding: 0.4rem 0.5rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.8rem; background: var(--card); color: var(--text); }
+  .doc-nombre { font-weight: 600; line-height: 1.3; }
+  .doc-sub { color: var(--text-dim); font-size: 0.7rem; margin-top: 0.15rem; line-height: 1.3; }
+  .cat-row td { background: #e3ecf7; color: #0d47a1; font-weight: 700; font-size: 0.78rem; letter-spacing: 0.5px; padding: 0.5rem 0.7rem; border-top: 2px solid var(--border); }
+  .doc-child-row td { padding: 0.15rem 0.7rem 0.15rem 2.4rem; border: none; }
+  .doc-child { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; cursor: pointer; }
+  .doc-child input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--success); cursor: pointer; }
+  .hijo-ok { color: var(--success); font-weight: 600; }
+  .hijo-pend { color: var(--text-dim); }
+  .cat-child td { color: var(--text); }
+  .form-group textarea { padding: 0.5rem 0.8rem; border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 0.85rem; outline: none; font-family: inherit; resize: vertical; }
+  .form-group textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(21,101,192,0.15); }
+  .hint { font-size: 0.78rem; color: var(--text-dim); margin: 0.6rem 0 1rem; line-height: 1.5; }
+  @media (max-width: 900px) {
+    header { padding: 1rem; }
+    .table-wrap { padding: 0.5rem; }
+    .controls { padding: 0.8rem 1rem; }
+    .modal { max-width: 100%; margin: 0; border-radius: 0; min-height: 100vh; }
+  }
+  @media (max-width: 820px) {
+    body { -webkit-tap-highlight-color: transparent; }
+    button, .btn, input, select { touch-action: manipulation; }
+    header { padding: calc(env(safe-area-inset-top, 0px) + 1rem) 1rem 0.9rem; gap: 0.6rem; }
+    header h1 { font-size: 1.1rem; width: 100%; }
+    header h1 span { font-size: 0.8rem; }
+    .stats-bar { width: 100%; gap: 0.5rem; }
+    .stat-chip { padding: 0.3rem 0.7rem; font-size: 0.72rem; }
+    .controls { padding: 0.7rem 0.8rem; }
+    .controls .btn { flex: 1 1 auto; min-height: 44px; padding: 0.4rem 0.7rem; }
+    .controls .btxt { display: none; }
+    .controls input, .controls select, .form-group input, .form-group select { font-size: 16px; }
+    .banner { margin: 0.7rem 0.8rem 0; }
+    .modal-overlay { padding: 0; align-items: flex-start; }
+    .modal { max-width: 100%; border-radius: 0; min-height: 100vh; }
+    .modal-header { padding: 1rem; padding-top: calc(1rem + env(safe-area-inset-top, 0px)); }
+    .modal-body { padding: 1rem; }
+    .form-group { min-width: 100%; }
+    .table-wrap { padding: 0.7rem; padding-bottom: calc(0.7rem + env(safe-area-inset-bottom, 0px)); }
+  }
+</style>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+
+<header>
+  <h1>🧑‍✈️ Motoristas CGC <span>| Documentos, Exámenes y Formaciones</span></h1>
+  <div class="stats-bar" id="statsBar"></div>
+  <span id="syncStatus">○ Conectando...</span>
+</header>
+
+<div class="banner" id="banner" onclick="abrirVencimientos()"></div>
+
+<div class="controls">
+  <button class="btn btn-add" onclick="openMotoristaModal()">➕<span class="btxt"> Agregar</span></button>
+  <button class="btn btn-edit-main" id="btnEditar" onclick="openEditMotoristaModal()" disabled>✏️<span class="btxt"> Editar seleccionado</span></button>
+  <button class="btn btn-doc" id="btnDocs" onclick="openDocsModalSeleccionado()" disabled>🪪<span class="btxt"> Documentos</span></button>
+  <button class="btn btn-del" id="btnEliminar" onclick="eliminarSeleccionado()" disabled>🗑️<span class="btxt"> Eliminar seleccionado</span></button>
+  <button class="btn btn-alert" onclick="abrirVencimientos()">⏰<span class="btxt"> Vencimientos</span></button>
+  <button class="btn btn-tipos" onclick="openTiposModal()">🗂️<span class="btxt"> Tipos</span></button>
+  <select id="filtroEstado" onchange="renderTable()" style="flex:1;max-width:180px">
+    <option value="TODOS">Todos los estados</option>
+    <option value="ACTIVO">Solo activos</option>
+    <option value="INACTIVO">Solo inactivos</option>
+  </select>
+  <input type="text" id="buscarMotorista" placeholder="🔍 Buscar nombre, identidad, teléfono..." oninput="renderTable()" style="flex:1;min-width:200px;max-width:340px">
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>No.</th>
+        <th>Nombre</th>
+        <th>Identidad</th>
+        <th>Teléfono</th>
+        <th>Estado</th>
+        <th>Documentos</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="bodyMotoristas"></tbody>
+  </table>
+  <div class="no-results" id="noResults" style="display:none;">No se encontraron motoristas con ese filtro.</div>
+</div>
+
+<!-- Modal motorista (agregar/editar) -->
+<div class="modal-overlay" id="motoristaModal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <h2 id="mModalTitle">➕ Agregar motorista</h2>
+      <button class="modal-close" onclick="closeMotoristaModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="mEditId" value="">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nombre completo *</label>
+          <input type="text" id="mNombre" placeholder="Nombre completo" autocomplete="off">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Número de identidad</label>
+          <input type="text" id="mIdentidad" placeholder="Ej: 0801-1990-12345" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Teléfono</label>
+          <input type="text" id="mTelefono" placeholder="Ej: 9999-0000" autocomplete="off">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="max-width:220px">
+          <label>Estado</label>
+          <select id="mEstado">
+            <option value="ACTIVO">Activo</option>
+            <option value="INACTIVO">Inactivo</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-btns">
+        <button class="btn-save" onclick="saveMotorista()">Guardar</button>
+        <button class="btn-cancel" onclick="closeMotoristaModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal exámenes / capacitaciones de un motorista -->
+<div class="modal-overlay" id="docsModal">
+  <div class="modal" style="max-width:760px">
+    <div class="modal-header">
+      <h2>🪪 Documentos del motorista</h2>
+      <button class="modal-close" onclick="closeDocsModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p id="docsInfo" class="doc-info"></p>
+      <div id="docsNoTipos" class="hint">Aún no hay tipos definidos. Agrégalos en el botón 🗂️ Tipos.</div>
+      <table class="db-table" id="docsTable">
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th style="width:120px">Tipo doc</th>
+            <th style="width:150px">Fecha de emisión</th>
+            <th style="width:170px">Vencimiento</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody id="docsBody"></tbody>
+      </table>
+      <p class="hint">⚠️ Los documentos con vencimiento automático (ej: antecedentes, exámenes médicos) se calculan solos desde la fecha de emisión. Los que venzan en menos de 30 días se marcan en naranja y los vencidos en rojo. Guarda solo al cambiar una fecha.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Modal vencimientos -->
+<div class="modal-overlay" id="vencModal">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header">
+      <h2>⏰ Vencimientos próximos</h2>
+      <button class="modal-close" onclick="closeVencModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-actions">
+        <select id="filtroVenc" onchange="renderVencimientos()">
+          <option value="TODOS">Todos</option>
+          <option value="POR_VENCER">Por vencer (30 días)</option>
+          <option value="VENCIDO">Vencidos</option>
+          <option value="VIGENTE">Vigentes</option>
+        </select>
+      </div>
+      <table class="db-table">
+        <thead>
+          <tr>
+            <th>Vence</th>
+            <th>Motorista</th>
+            <th>Tipo</th>
+            <th>Fecha</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody id="vencBody"></tbody>
+      </table>
+      <div id="vencNoRes" style="display:none;text-align:center;color:var(--text-dim);padding:2rem">No hay documentos con ese filtro.</div>
+      <p class="hint">Toca una fila para abrir los documentos del motorista.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Modal catálogo de tipos -->
+<div class="modal-overlay" id="tiposModal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <h2>🗂️ Tipos de documentos</h2>
+      <button class="modal-close" onclick="closeTiposModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="db-form" id="tipoForm">
+        <h3 id="tipoFormTitle">➕ Agregar tipo</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Categoría</label>
+            <input type="text" id="tipoCategoria" placeholder="Ej: Documentos personales" list="dlistCats" autocomplete="off">
+            <datalist id="dlistCats"></datalist>
+          </div>
+          <div class="form-group">
+            <label>Nombre del documento</label>
+            <input type="text" id="tipoNombre" placeholder="Ej: Antecedentes penales" autocomplete="off">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="max-width:200px">
+            <label>Vencimiento</label>
+            <select id="tipoModo" onchange="toggleModo()">
+              <option value="auto">Automático</option>
+              <option value="manual">Manual</option>
+            </select>
+          </div>
+          <div class="form-group" id="grupoDuracion" style="max-width:160px">
+            <label>Duración (meses)</label>
+            <input type="number" id="tipoDuracion" min="1" max="240" value="12">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Opciones de tipo (separadas por /) — opcional</label>
+            <input type="text" id="tipoOpciones" placeholder="Ej: PAI/PAN" autocomplete="off">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Casillas del grupo (una por línea) — opcional</label>
+            <textarea id="tipoHijos" rows="3" placeholder="Ej:&#10;Examen General de Sangre&#10;Examen General de Orina&#10;Ecograma" autocomplete="off"></textarea>
+            <span class="hint" style="margin:0.4rem 0 0">Si escribes casillas aquí, aparecerán debajo de este documento para marcar con ✓ (ej: los 6 exámenes médicos).</span>
+          </div>
+        </div>
+        <div class="form-btns">
+          <button class="btn-save" onclick="saveTipo()">Guardar</button>
+          <button class="btn-cancel" onclick="hideTipoForm()">Cancelar</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-add" onclick="showTipoForm()">+ Agregar tipo</button>
+      </div>
+      <table class="db-table">
+        <thead>
+          <tr><th>No.</th><th>Tipo</th><th>Vigencia</th><th>Acciones</th></tr>
+        </thead>
+        <tbody id="tiposBody"></tbody>
+      </table>
+      <p class="hint">Organiza los tipos por categoría. "Automático" calcula el vencimiento solo (emisión + duración en meses).</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const POR_VENCER_DIAS = 30;
+
+/* ========== DATOS ========== */
+const KEY_MOTORISTAS = "motoristas_db";
+const KEY_TIPOS = "mdoc_tipos_db";
+const KEY_DOCS = "mdocs_db";
+
+/* Catálogo inicial de tipos de documento, organizado por categoría.
+   vence: "manual" (el usuario digita el vencimiento) o "auto" (se calcula = emisión + duracionMeses)
+   hijos: casillas hijas que se marcan (ej: los 6 exámenes dentro de "Exámenes médicos") */
+const DEFAULT_TIPOS = [
+  { nombre: "Licencia de conducir", categoria: "Documentos personales", vence: "manual", duracionMeses: null, extra: [{ id: "tipo", label: "Tipo", opciones: ["PAI", "PAN"] }], hijos: [] },
+  { nombre: "Antecedentes penales", categoria: "Documentos personales", vence: "auto", duracionMeses: 6, extra: [], hijos: [] },
+  { nombre: "Antecedentes policiales", categoria: "Documentos personales", vence: "auto", duracionMeses: 12, extra: [], hijos: [] },
+  { nombre: "Exámenes médicos", categoria: "Documentos personales", vence: "auto", duracionMeses: 12, extra: [], hijos: ["Examen General de Sangre", "Examen General de Orina", "Examen Oftalmológico", "Ecograma", "Presión Arterial", "Glicemia"] },
+  { nombre: "Inducción seguridad vial", categoria: "Formaciones", vence: "auto", duracionMeses: 12, extra: [], hijos: [] },
+  { nombre: "Manejo defensivo", categoria: "Formaciones", vence: "auto", duracionMeses: 12, extra: [], hijos: [] },
+  { nombre: "Equipo móvil", categoria: "Formaciones", vence: "auto", duracionMeses: 12, extra: [], hijos: [] },
+  { nombre: "SOP inspección de EM", categoria: "Formaciones", vence: "auto", duracionMeses: 12, extra: [], hijos: [] },
+  { nombre: "SOP transp y desc de cmto a granel", categoria: "Formaciones", vence: "auto", duracionMeses: 12, extra: [], hijos: [] }
+];
+
+/* Nombres de hijos que ya viven dentro de un grupo; los tipos sueltos con ese
+   nombre vienen del modelo viejo y se absorben (no se crean duplicados). */
+const TIPOS_ABSORBIDOS = new Set();
+DEFAULT_TIPOS.forEach(t => (t.hijos || []).forEach(h => TIPOS_ABSORBIDOS.add(String(h).trim().toLowerCase())));
+
+function normalizarTipos(lista) {
+  const out = [];
+  const seen = {};
+  const agregar = t => {
+    const key = String(t.nombre).trim().toLowerCase();
+    if (seen[key] || TIPOS_ABSORBIDOS.has(key)) return;
+    seen[key] = true;
+    t.nombre = String(t.nombre).trim();
+    out.push(t);
+  };
+  DEFAULT_TIPOS.forEach(t => agregar(JSON.parse(JSON.stringify(t))));
+  (lista || []).forEach(t => {
+    if (typeof t === "string") {
+      agregar({ nombre: t.trim(), categoria: "Sin categoría", vence: "manual", duracionMeses: null, extra: [], hijos: [] });
+    } else if (t && t.nombre) {
+      agregar({
+        nombre: String(t.nombre).trim(),
+        categoria: t.categoria || "Sin categoría",
+        vence: t.vence === "auto" ? "auto" : "manual",
+        duracionMeses: t.duracionMeses || null,
+        extra: t.extra || [],
+        hijos: t.hijos || []
+      });
+    }
+  });
+  return out;
+}
+
+let motoristas = loadArr(KEY_MOTORISTAS, []);
+let tipos = normalizarTipos(loadArr(KEY_TIPOS, []));
+let mdocs = loadArr(KEY_DOCS, []).filter(d => !TIPOS_ABSORBIDOS.has(String(d.tipo || "").trim().toLowerCase()));
+let selectedId = null;
+let tipoEditIdx = -1;
+
+function loadArr(key, def) {
+  try {
+    const s = localStorage.getItem(key);
+    if (s) { const v = JSON.parse(s); return Array.isArray(v) ? v : def; }
+  } catch (e) {}
+  return JSON.parse(JSON.stringify(def));
+}
+function saveMotoristas() { localStorage.setItem(KEY_MOTORISTAS, JSON.stringify(motoristas)); guardarNube("motoristas", motoristas); }
+function saveTipos() { localStorage.setItem(KEY_TIPOS, JSON.stringify(tipos)); guardarNube("mdoc_tipos", tipos); }
+function saveDocs() { localStorage.setItem(KEY_DOCS, JSON.stringify(mdocs)); guardarNube("mdocs", mdocs); }
+
+/* ========== FIREBASE ========== */
+const firebaseConfig = {
+  apiKey: "AIzaSyBfFCJQ97EXhrKzrGISkBnWmzXR8fKsxFY",
+  authDomain: "flota-cisternas-cgc.firebaseapp.com",
+  databaseURL: "https://flota-cisternas-cgc-default-rtdb.firebaseio.com",
+  projectId: "flota-cisternas-cgc",
+  storageBucket: "flota-cisternas-cgc.firebasestorage.app",
+  messagingSenderId: "539044950597",
+  appId: "1:539044950597:web:3a98f5ad57d4a12c76a92c"
+};
+let dbRef = null;
+try { firebase.initializeApp(firebaseConfig); dbRef = firebase.database().ref(); } catch (e) { dbRef = null; }
+
+async function cargarDeFirebase(clave) {
+  if (!dbRef) return null;
+  try {
+    const snap = await dbRef.child(clave).once("value");
+    const raw = snap.val();
+    let datos = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (datos && typeof datos === "object" && !Array.isArray(datos))
+      datos = Object.values(datos);
+    return Array.isArray(datos) ? datos : null;
+  } catch (e) { return null; }
+}
+async function guardarNube(clave, datos) {
+  if (!dbRef) return;
+  try { await dbRef.child(clave).set(JSON.stringify(datos)); }
+  catch (e) {}
+}
+async function sincronizar() {
+  if (!dbRef) return;
+  try {
+    const a = await cargarDeFirebase("motoristas");
+    if (a) { motoristas = a; localStorage.setItem(KEY_MOTORISTAS, JSON.stringify(a)); }
+    const b = await cargarDeFirebase("mdoc_tipos");
+    if (b) { tipos = normalizarTipos(b); localStorage.setItem(KEY_TIPOS, JSON.stringify(tipos)); saveTipos(); }
+    const c = await cargarDeFirebase("mdocs");
+    if (c) { mdocs = c; localStorage.setItem(KEY_DOCS, JSON.stringify(c)); }
+    $("syncStatus").textContent = "● Nube"; $("syncStatus").style.color = "#b9f6ca";
+  } catch (e) {
+    $("syncStatus").textContent = "○ Local"; $("syncStatus").style.color = "#94a3b8";
+  }
+}
+
+/* ========== FECHAS ========== */
+function diffDias(vence) {
+  if (!vence) return null;
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const v = new Date(vence + "T00:00:00");
+  if (isNaN(v.getTime())) return null;
+  return Math.round((v - hoy) / 86400000);
+}
+function fmtFecha(s) {
+  if (!s) return "—";
+  const p = s.split("-");
+  return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : s;
+}
+/* Fechas como TEXTO con máscara dd/mm/aaaa: en iOS el campo nativo solo aceptaba
+   1 dígito en el año; con esta máscara (teclado numérico) funcionan todos. */
+function fmtDMY(s) {
+  if (!s) return "";
+  const p = String(s).split("-");
+  return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : String(s);
+}
+function parseDMY(s) {
+  if (!s) return "";
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s).trim());
+  if (!m) return "";
+  const d = +m[1], mo = +m[2], y = +m[3];
+  if (d < 1 || d > 31 || mo < 1 || mo > 12 || y < 1900 || y > 2100) return "";
+  return y + "-" + String(mo).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+}
+function mascaraFecha(el) {
+  const d = el.value.replace(/\D/g, "").slice(0, 8);
+  let out = d;
+  if (d.length > 4) out = d.slice(0, 2) + "/" + d.slice(2, 4) + "/" + d.slice(4);
+  else if (d.length > 2) out = d.slice(0, 2) + "/" + d.slice(2);
+  el.value = out;
+}
+function sumarMeses(iso, meses) {
+  if (!iso) return "";
+  const p = iso.split("-").map(Number);
+  if (p.length !== 3 || isNaN(p[0]) || isNaN(p[1]) || isNaN(p[2])) return "";
+  const dia = p[2];
+  const d = new Date(p[0], p[1] - 1, 1);
+  d.setMonth(d.getMonth() + meses);
+  const max = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(dia, max));
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function venceAuto(tipo, emit) {
+  if (!tipo || tipo.vence !== "auto" || !emit || !tipo.duracionMeses) return "";
+  return sumarMeses(emit, tipo.duracionMeses);
+}
+function estadoDoc(vence) {
+  const d = diffDias(vence);
+  if (d === null) return { clase: "st-sin", label: "S/ fecha" };
+  if (d < 0) return { clase: "st-venc", label: "Vencido" };
+  if (d <= POR_VENCER_DIAS) return { clase: "st-porv", label: "Vence en " + d + "d" };
+  return { clase: "st-vig", label: "Vigente" };
+}
+function docsDeMotorista(id) { return mdocs.filter(d => d.motoristaId === id); }
+
+/* ========== RENDER ========== */
+function showToast(msg, err) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = "toast show" + (err ? " err" : "");
+  clearTimeout(window.__toastT);
+  window.__toastT = setTimeout(() => { t.className = "toast"; }, 2500);
+}
+
+function renderStats() {
+  const activos = motoristas.filter(m => m.estado !== "INACTIVO").length;
+  const conteoTotal = mdocs.length;
+  const vencidos = mdocs.filter(d => { const e = estadoDoc(d.vence); return e.clase === "st-venc"; }).length;
+  const porVencer = mdocs.filter(d => { const e = estadoDoc(d.vence); return e.clase === "st-porv"; }).length;
+  const chips = [
+    { t: "Total motoristas", v: motoristas.length, c: "#1565c0", bg: "#e3f2fd", b: "#1565c0" },
+    { t: "Activos", v: activos, c: "#2e7d32", bg: "#e8f5e9", b: "#2e7d32" },
+    { t: "Docs vigentes", v: conteoTotal - vencidos - porVencer, c: "#546e7a", bg: "#eceff1", b: "#546e7a" },
+    { t: "Por vencer", v: porVencer, c: "#ef6c00", bg: "#fff3e0", b: "#ef6c00" },
+    { t: "Vencidos", v: vencidos, c: "#c62828", bg: "#ffebee", b: "#c62828" }
+  ];
+  $("statsBar").innerHTML = chips.map(ch =>
+    `<div class="stat-chip" style="background:${ch.bg};color:${ch.c};border:2px solid ${ch.b}">
+       <span class="dot" style="background:${ch.c}"></span>${ch.t}: ${ch.v}
+     </div>`).join("");
+  const banner = $("banner");
+  if (vencidos || porVencer) {
+    banner.innerHTML = (vencidos ? `<span class="danger">⚠️ ${vencidos} vencido${vencidos === 1 ? "" : "s"}</span>` : "") +
+      (vencidos && porVencer ? " · " : "") +
+      (porVencer ? `🟠 ${porVencer} por vencer (30 días)` : "") +
+      " — toca para ver detalles";
+    banner.classList.add("show");
+  } else {
+    banner.classList.remove("show");
+  }
+}
+
+function resumenDoc(id) {
+  const docs = docsDeMotorista(id);
+  if (!docs.length) return `<span class="doc-resumen" style="color:var(--text-dim)">—</span>`;
+  let vig = 0, porv = 0, ven = 0;
+  docs.forEach(d => {
+    const e = estadoDoc(d.vence);
+    if (e.clase === "st-vig") vig++;
+    else if (e.clase === "st-porv") porv++;
+    else if (e.clase === "st-venc") ven++;
+  });
+  let html = `<span class="doc-resumen">`;
+  if (vig) html += `<span class="ok">✓ ${vig}</span> `;
+  if (porv) html += `<span class="warn">🟠 ${porv}</span> `;
+  if (ven) html += `<span class="bad">✗ ${ven}</span>`;
+  return html + `</span>`;
+}
+
+function renderTable() {
+  const tbody = $("bodyMotoristas");
+  const noRes = $("noResults");
+  const q = (sinAcentos($("buscarMotorista").value.trim()));
+  const filtro = $("filtroEstado").value;
+  let lista = motoristas.filter(m => {
+    if (filtro !== "TODOS" && m.estado !== filtro) return false;
+    if (q && !sinAcentos(m.nombre).includes(q) && !sinAcentos(m.identidad || "").includes(q) && !sinAcentos(m.telefono || "").includes(q)) return false;
+    return true;
+  });
+  lista.sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"));
+  if (!lista.length) {
+    tbody.innerHTML = "";
+    noRes.style.display = "block";
+    renderStats();
+    return;
+  }
+  noRes.style.display = "none";
+  tbody.innerHTML = lista.map((m, i) => {
+    const estAct = m.estado !== "INACTIVO";
+    return `<tr class="${selectedId === m.id ? 'selected' : ''}" onclick="selectRow(${m.id})">
+      <td style="color:var(--text-dim);font-weight:600">${i + 1}</td>
+      <td><span class="nombre">${esc(m.nombre)}</span><div class="sub">${esc(m.identidad || "")}</div></td>
+      <td>${esc(m.identidad || "—")}</td>
+      <td>${esc(m.telefono || "—")}</td>
+      <td><span class="estado-tag ${estAct ? 'est-act' : 'est-inact'}">${m.estado || "ACTIVO"}</span></td>
+      <td>${resumenDoc(m.id)}</td>
+      <td><div class="db-actions">
+        <button class="btn-icon btn-open" title="Documentos" onclick="event.stopPropagation();openDocsModal(${m.id})">🪪</button>
+        <button class="btn-icon btn-edit" title="Editar" onclick="event.stopPropagation();openEditMotoristaModal()">✏️</button>
+        <button class="btn-icon btn-del" title="Eliminar" onclick="event.stopPropagation();eliminarSeleccionado()">🗑️</button>
+      </div></td>
+    </tr>`;
+  }).join("");
+  renderStats();
+}
+
+function esc(s) {
+  return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function escAttr(s) {
+  return esc(s).replace(/'/g, "&#39;");
+}
+function sinAcentos(s) {
+  return String(s || "").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
+}
+
+function selectRow(id) {
+  selectedId = selectedId === id ? null : id;
+  actualizarBotones();
+  renderTable();
+}
+function actualizarBotones() {
+  const on = selectedId !== null;
+  $("btnEditar").disabled = !on;
+  $("btnDocs").disabled = !on;
+  $("btnEliminar").disabled = !on;
+}
+function motoristaSel() { return motoristas.find(m => m.id === selectedId) || null; }
+
+/* ========== MOTORISTA CRUD ========== */
+function openMotoristaModal() {
+  $("mModalTitle").textContent = "➕ Agregar motorista";
+  $("mEditId").value = "";
+  $("mNombre").value = ""; $("mIdentidad").value = ""; $("mTelefono").value = ""; $("mEstado").value = "ACTIVO";
+  $("motoristaModal").classList.add("active");
+  $("mNombre").focus();
+}
+function openEditMotoristaModal() {
+  const m = motoristaSel();
+  if (!m) return;
+  $("mModalTitle").textContent = "✏️ Editar motorista";
+  $("mEditId").value = m.id;
+  $("mNombre").value = m.nombre;
+  $("mIdentidad").value = m.identidad || "";
+  $("mTelefono").value = m.telefono || "";
+  $("mEstado").value = m.estado || "ACTIVO";
+  $("motoristaModal").classList.add("active");
+  $("mNombre").focus();
+}
+function closeMotoristaModal() { $("motoristaModal").classList.remove("active"); }
+function saveMotorista() {
+  const nombre = $("mNombre").value.trim();
+  const identidad = $("mIdentidad").value.trim();
+  const telefono = $("mTelefono").value.trim();
+  const estado = $("mEstado").value;
+  if (!nombre) { alert("El nombre es obligatorio."); $("mNombre").focus(); return; }
+  const editId = $("mEditId").value;
+  if (editId) {
+    const m = motoristas.find(x => x.id === parseInt(editId, 10));
+    if (m) {
+      m.nombre = nombre; m.identidad = identidad; m.telefono = telefono; m.estado = estado;
+    }
+  } else {
+    const maxId = motoristas.reduce((mx, m) => Math.max(mx, m.id), 0);
+    motoristas.push({ id: maxId + 1, nombre: nombre, identidad: identidad, telefono: telefono, estado: estado });
+  }
+  saveMotoristas();
+  closeMotoristaModal();
+  renderTable();
+  showToast(editId ? "✏️ Motorista actualizado" : "➕ Motorista agregado");
+}
+function eliminarSeleccionado() {
+  const m = motoristaSel();
+  if (!m) return;
+  if (!confirm(`¿Eliminar a ${m.nombre}? También se borrarán sus exámenes/capacitaciones.`)) return;
+  mdocs = mdocs.filter(d => d.motoristaId !== m.id);
+  motoristas = motoristas.filter(x => x.id !== m.id);
+  selectedId = null;
+  saveMotoristas(); saveDocs();
+  actualizarBotones();
+  renderTable();
+  showToast("🗑️ Motorista eliminado");
+}
+
+/* ========== DOCUMENTOS (exámenes / capacitaciones) ========== */
+let docsMotoristaId = null;
+function openDocsModalSeleccionado() {
+  const m = motoristaSel();
+  if (m) openDocsModal(m.id);
+}
+function openDocsModal(id) {
+  docsMotoristaId = id;
+  const m = motoristas.find(x => x.id === id);
+  if (!m) return;
+  $("docsInfo").innerHTML = `<b>${esc(m.nombre)}</b>${m.identidad ? " · " + esc(m.identidad) : ""}${m.telefono ? " · " + esc(m.telefono) : ""}`;
+  renderDocsTable();
+  $("docsModal").classList.add("active");
+}
+function closeDocsModal() { $("docsModal").classList.remove("active"); docsMotoristaId = null; }
+function renderDocsTable() {
+  const tbody = $("docsBody");
+  const noTipos = $("docsNoTipos");
+  if (!docsMotoristaId) return;
+  if (!tipos.length) {
+    tbody.innerHTML = "";
+    $("docsTable").style.display = "none";
+    noTipos.style.display = "block";
+    return;
+  }
+  $("docsTable").style.display = "table";
+  noTipos.style.display = "none";
+  const cats = [];
+  tipos.forEach(t => { if (!cats.includes(t.categoria)) cats.push(t.categoria); });
+  let html = "";
+  cats.forEach(cat => {
+    html += `<tr class="cat-row"><td colspan="5">📁 ${esc(cat)}</td></tr>`;
+    tipos.forEach((t, gi) => {
+      if (t.categoria !== cat) return;
+      const doc = mdocs.find(d => d.motoristaId === docsMotoristaId && d.tipo === t.nombre);
+      const emit = doc ? (doc.emit || "") : "";
+      const esAuto = t.vence === "auto";
+      const vence = esAuto ? venceAuto(t, emit) : (doc ? (doc.vence || "") : "");
+      const e = estadoDoc(vence);
+      let extraHtml = "";
+      (t.extra || []).forEach(f => {
+        const val = doc && doc.extra ? (doc.extra[f.id] || "") : "";
+        const opts = f.opciones.map(o =>
+          `<option value="${escAttr(o)}" ${o === val ? "selected" : ""}>${esc(o)}</option>`).join("");
+        extraHtml = `<select id="extra_${f.id}_${gi}" class="extra-select" onchange="saveDoc(${gi})">` +
+          `<option value="">—</option>` + opts + `</select>`;
+      });
+      const venceCell = esAuto
+        ? `<input type="text" inputmode="numeric" autocomplete="off" class="fecha-txt" id="vence_${gi}" value="${fmtDMY(vence)}" disabled title="Se calcula solo (${t.duracionMeses} meses)" placeholder="dd/mm/aaaa">`
+        : `<input type="text" inputmode="numeric" autocomplete="off" class="fecha-txt" id="vence_${gi}" value="${fmtDMY(vence)}" maxlength="10" oninput="mascaraFecha(this)" onchange="saveDoc(${gi})" placeholder="dd/mm/aaaa">`;
+      const hijos = t.hijos || [];
+      let subHtml = "";
+      if (esAuto) subHtml += `Vence: emisión + ${t.duracionMeses} meses`;
+      const realizados = hijos.filter(h => doc && doc.hijos && doc.hijos[h]).length;
+      if (hijos.length) subHtml += (subHtml ? " · " : "") + `${realizados}/${hijos.length} realizados`;
+      html += `<tr class="doc-row">
+        <td><div class="doc-nombre">${esc(t.nombre)}</div>${subHtml ? `<div class="doc-sub">${subHtml}</div>` : ""}</td>
+        <td>${extraHtml}</td>
+        <td><input type="text" inputmode="numeric" autocomplete="off" class="fecha-txt" id="emit_${gi}" value="${fmtDMY(emit)}" maxlength="10" oninput="mascaraFecha(this)" onchange="saveDoc(${gi})" placeholder="dd/mm/aaaa"></td>
+        <td>${venceCell}</td>
+        <td><span class="status-select ${e.clase}">${e.label}</span></td>
+      </tr>`;
+      if (hijos.length) {
+        html += hijos.map((h, j) => {
+          const checked = doc && doc.hijos ? !!doc.hijos[h] : false;
+          return `<tr class="doc-child-row"><td colspan="5"><label class="doc-child">
+            <input type="checkbox" id="hijo_${gi}_${j}" ${checked ? "checked" : ""} onchange="saveDoc(${gi})">
+            <span>${esc(h)}</span>
+            <span class="${checked ? "hijo-ok" : "hijo-pend"}">${checked ? "✅ Realizado" : "Pendiente"}</span>
+          </label></td></tr>`;
+        }).join("");
+      }
+    });
+  });
+  tbody.innerHTML = html;
+}
+function saveDoc(gi) {
+  const t = tipos[gi];
+  if (!t || docsMotoristaId === null) return;
+  const emit = parseDMY($("emit_" + gi).value);
+  const venceManual = t.vence === "manual" && $("vence_" + gi) ? parseDMY($("vence_" + gi).value) : "";
+  const vence = t.vence === "auto" ? venceAuto(t, emit) : venceManual;
+  const extra = {};
+  (t.extra || []).forEach(f => {
+    const sel = $("extra_" + f.id + "_" + gi);
+    if (sel) extra[f.id] = sel.value;
+  });
+  const hijos = {};
+  let hayHijos = false;
+  (t.hijos || []).forEach((h, j) => {
+    const cb = $("hijo_" + gi + "_" + j);
+    if (cb) { hijos[h] = cb.checked; if (cb.checked) hayHijos = true; }
+  });
+  const idx = mdocs.findIndex(d => d.motoristaId === docsMotoristaId && d.tipo === t.nombre);
+  if (idx >= 0) {
+    if (!emit && !vence && !Object.keys(extra).length && !hayHijos) mdocs.splice(idx, 1);
+    else { mdocs[idx].emit = emit; mdocs[idx].vence = vence; mdocs[idx].extra = extra; mdocs[idx].hijos = hijos; }
+  } else {
+    if (emit || vence || Object.keys(extra).length || hayHijos) mdocs.push({ id: Date.now(), motoristaId: docsMotoristaId, tipo: t.nombre, emit: emit, vence: vence, extra: extra, hijos: hijos });
+  }
+  saveDocs();
+  renderDocsTable();
+  renderStats();
+}
+
+/* ========== VENCIMIENTOS ========== */
+function abrirVencimientos() { $("vencModal").classList.add("active"); renderVencimientos(); }
+function closeVencModal() { $("vencModal").classList.remove("active"); }
+function renderVencimientos() {
+  const filtro = $("filtroVenc").value;
+  const tbody = $("vencBody");
+  const noRes = $("vencNoRes");
+  let lista = mdocs.filter(d => d.vence).map(d => {
+    const m = motoristas.find(x => x.id === d.motoristaId);
+    const e = estadoDoc(d.vence);
+    return { d: d, m: m, e: e };
+  });
+  if (filtro === "POR_VENCER") lista = lista.filter(x => x.e.clase === "st-porv");
+  else if (filtro === "VENCIDO") lista = lista.filter(x => x.e.clase === "st-venc");
+  else if (filtro === "VIGENTE") lista = lista.filter(x => x.e.clase === "st-vig");
+  lista.sort((a, b) => (a.d.vence < b.d.vence ? -1 : a.d.vence > b.d.vence ? 1 : 0));
+  if (!lista.length) {
+    tbody.innerHTML = "";
+    noRes.style.display = "block";
+    return;
+  }
+  noRes.style.display = "none";
+  tbody.innerHTML = lista.map(x => `<tr onclick="abrirDesdeVenc(${x.d.motoristaId})">
+    <td style="color:var(--text-dim);font-weight:600">${fmtFecha(x.d.vence)}</td>
+    <td style="font-weight:600">${x.m ? esc(x.m.nombre) : "—"}</td>
+    <td>${esc(x.d.tipo || "")}</td>
+    <td>${x.d.emit ? "Emit.: " + fmtFecha(x.d.emit) : "—"}</td>
+    <td><span class="status-select ${x.e.clase}">${x.e.label}</span></td>
+  </tr>`).join("");
+}
+function abrirDesdeVenc(id) { closeVencModal(); openDocsModal(id); }
+
+/* ========== TIPOS (catálogo editable por categoría) ========== */
+function openTiposModal() { $("tiposModal").classList.add("active"); actualizarDatalistCats(); renderTipos(); }
+function closeTiposModal() { $("tiposModal").classList.remove("active"); }
+function actualizarDatalistCats() {
+  const cats = [];
+  tipos.forEach(t => { if (!cats.includes(t.categoria)) cats.push(t.categoria); });
+  $("dlistCats").innerHTML = cats.map(c => `<option value="${escAttr(c)}">`).join("");
+}
+function renderTipos() {
+  const tbody = $("tiposBody");
+  const cats = [];
+  tipos.forEach(t => { if (!cats.includes(t.categoria)) cats.push(t.categoria); });
+  let html = "";
+  cats.forEach(cat => {
+    html += `<tr class="cat-row"><td colspan="4">📁 ${esc(cat)}</td></tr>`;
+    tipos.forEach((t, i) => {
+      if (t.categoria !== cat) return;
+      const vig = t.vence === "auto" ? `Auto · ${t.duracionMeses} meses` : "Manual";
+      let sub = "";
+      if (t.extra && t.extra.length) sub += `Opciones: ${esc(t.extra.map(f => f.opciones.join(" / ")).join(", "))}`;
+      if (t.hijos && t.hijos.length) sub += (sub ? " · " : "") + `Grupo con ${t.hijos.length} casillas`;
+      html += `<tr>
+        <td style="color:var(--text-dim);font-weight:600">${i + 1}</td>
+        <td style="font-weight:600">${esc(t.nombre)}
+          ${sub ? `<div class="doc-sub">${sub}</div>` : ""}
+        </td>
+        <td>${vig}</td>
+        <td><div class="db-actions">
+          <button class="btn-icon btn-edit" title="Editar" onclick="editarTipo(${i})">✏️</button>
+          <button class="btn-icon btn-del" title="Eliminar" onclick="eliminarTipo(${i})">🗑️</button>
+        </div></td>
+      </tr>`;
+      (t.hijos || []).forEach(h => {
+        html += `<tr class="doc-child-row cat-child"><td colspan="4"><span class="doc-child"><span style="color:var(--text-dim)">↳</span> ${esc(h)}</span></td></tr>`;
+      });
+    });
+  });
+  tbody.innerHTML = html;
+}
+function showTipoForm() {
+  tipoEditIdx = -1;
+  $("tipoFormTitle").textContent = "➕ Agregar tipo";
+  $("tipoCategoria").value = "";
+  $("tipoNombre").value = "";
+  $("tipoModo").value = "auto";
+  $("tipoDuracion").value = 12;
+  $("tipoOpciones").value = "";
+  $("tipoHijos").value = "";
+  toggleModo();
+  $("tipoForm").classList.add("active");
+  setTimeout(() => $("tipoCategoria").focus(), 50);
+}
+function editarTipo(i) {
+  const t = tipos[i];
+  if (!t) return;
+  tipoEditIdx = i;
+  $("tipoFormTitle").textContent = "✏️ Editar tipo";
+  $("tipoCategoria").value = t.categoria || "";
+  $("tipoNombre").value = t.nombre || "";
+  $("tipoModo").value = t.vence === "auto" ? "auto" : "manual";
+  $("tipoDuracion").value = t.duracionMeses || "";
+  $("tipoOpciones").value = (t.extra || []).map(f => f.opciones.join("/")).join("/");
+  $("tipoHijos").value = (t.hijos || []).join("\n");
+  toggleModo();
+  $("tipoForm").classList.add("active");
+  setTimeout(() => $("tipoNombre").focus(), 50);
+}
+function toggleModo() { $("grupoDuracion").style.display = $("tipoModo").value === "auto" ? "" : "none"; }
+function hideTipoForm() { $("tipoForm").classList.remove("active"); }
+function saveTipo() {
+  const categoria = $("tipoCategoria").value.trim() || "Sin categoría";
+  const nombre = $("tipoNombre").value.trim();
+  if (!nombre) { alert("Escribe el nombre del documento."); $("tipoNombre").focus(); return; }
+  const modo = $("tipoModo").value;
+  const dur = parseInt($("tipoDuracion").value, 10);
+  const opciones = $("tipoOpciones").value.split("/").map(s => s.trim()).filter(Boolean);
+  const extra = opciones.length ? [{ id: "tipo", label: "Tipo", opciones: opciones }] : [];
+  const hijos = $("tipoHijos").value.split("\n").map(s => s.trim()).filter(Boolean);
+  const duracionMeses = modo === "auto" ? (dur > 0 ? dur : null) : null;
+
+  if (tipoEditIdx >= 0) {
+    const prev = tipos[tipoEditIdx];
+    const prevNombre = prev.nombre;
+    prev.categoria = categoria;
+    prev.nombre = nombre;
+    prev.vence = modo;
+    prev.duracionMeses = duracionMeses;
+    prev.extra = extra;
+    prev.hijos = hijos;
+    if (prevNombre !== nombre) {
+      mdocs.forEach(d => { if (d.tipo === prevNombre) d.tipo = nombre; });
+      saveDocs();
+    }
+  } else {
+    if (tipos.some(t => t.nombre.toLowerCase() === nombre.toLowerCase())) { alert("Ese tipo ya existe."); $("tipoNombre").focus(); return; }
+    tipos.push({ nombre: nombre, categoria: categoria, vence: modo, duracionMeses: duracionMeses, extra: extra, hijos: hijos });
+  }
+  saveTipos();
+  hideTipoForm();
+  actualizarDatalistCats();
+  renderTipos();
+  if (docsMotoristaId) renderDocsTable();
+  renderStats();
+  showToast(tipoEditIdx >= 0 ? "✏️ Tipo actualizado" : "🗂️ Tipo agregado");
+}
+function eliminarTipo(i) {
+  const t = tipos[i];
+  const usados = mdocs.filter(d => d.tipo === t.nombre).length;
+  const msg = usados
+    ? `¿Eliminar el tipo "${t.nombre}"?\nTambién se quitarán ${usados} registro(s) de motoristas.`
+    : `¿Eliminar el tipo "${t.nombre}"?`;
+  if (!confirm(msg)) return;
+  tipos.splice(i, 1);
+  mdocs = mdocs.filter(d => d.tipo !== t.nombre);
+  saveTipos(); saveDocs();
+  actualizarDatalistCats();
+  renderTipos();
+  if (docsMotoristaId) renderDocsTable();
+  renderStats();
+  showToast("🗑️ Tipo eliminado", true);
+}
+
+/* ========== INIT ========== */
+function recalcularVencimientos() {
+  let changed = false;
+  mdocs.forEach(d => {
+    const t = tipos.find(x => x.nombre === d.tipo);
+    if (t && t.vence === "auto" && d.emit) {
+      const v = venceAuto(t, d.emit);
+      if (v !== d.vence) { d.vence = v; changed = true; }
+    }
+  });
+  if (changed) saveDocs();
+}
+document.querySelectorAll(".modal-overlay").forEach(o => {
+  o.addEventListener("click", e => { if (e.target === o) o.classList.remove("active"); });
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") document.querySelectorAll(".modal-overlay.active").forEach(o => o.classList.remove("active"));
+});
+function init() {
+  recalcularVencimientos();
+  actualizarBotones();
+  renderTable();
+  sincronizar().then(() => {
+    recalcularVencimientos();
+    renderTable();
+    if (docsMotoristaId) renderDocsTable();
+  });
+}
+init();
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
