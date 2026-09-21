@@ -1,0 +1,15 @@
+{
+  "name": "Flota Cisternas CGC",
+  "short_name": "Flota CGC",
+  "description": "Control de estado de flota de cisternas",
+  "start_url": "flota-cisternas.html",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f0f4f8",
+  "theme_color": "#1565c0",
+  "icons": [
+    { "src": "icon-flota-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-flota-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
