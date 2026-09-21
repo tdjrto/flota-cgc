@@ -12,20 +12,20 @@
 <title>Motoristas CGC - Exámenes y Capacitaciones</title>
 <style>
   :root {
-    --bg: #f0f4f8;
-    --card: #ffffff;
-    --border: #dce2eb;
-    --text: #1e293b;
-    --text-dim: #7a8ba3;
-    --accent: #1565c0;
-    --accent-light: #e3f2fd;
-    --success: #2e7d32;
-    --warning: #ef6c00;
-    --danger: #c62828;
-    --info: #5c6bc0;
-    --header-bg: linear-gradient(135deg, #0d47a1, #1565c0);
-    --row-hover: #f5f8fc;
-    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    --bg: #0d1526;
+    --card: #16223b;
+    --border: #2b3a5c;
+    --text: #e6edf8;
+    --text-dim: #8fa3c4;
+    --accent: #38bdf8;
+    --accent-light: #16324f;
+    --success: #4ade80;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --info: #818cf8;
+    --header-bg: linear-gradient(135deg, #0a1126, #1a2f52);
+    --row-hover: #1c2a4a;
+    --shadow: 0 2px 10px rgba(0,0,0,0.45);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; overflow: hidden; }
@@ -66,6 +66,8 @@
     background: var(--bg); color: var(--text); font-size: 0.85rem; outline: none; cursor: pointer;
   }
   .controls input:focus { border-color: var(--accent); }
+  .modal-actions select { padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 0.85rem; outline: none; cursor: pointer; }
+  .modal-actions select:focus { border-color: var(--accent); }
   .btn {
     padding: 0.55rem 1rem; border-radius: 8px; border: 1px solid; background: transparent;
     font-size: 0.8rem; cursor: pointer; font-weight: 600; transition: all 0.2s;
@@ -81,43 +83,51 @@
   .btn-doc { border-color: var(--info); color: var(--info); }
   .btn-doc:hover:not(:disabled) { background: var(--info); color: #fff; }
   .btn-doc:disabled { opacity: 0.35; cursor: not-allowed; }
-  .btn-alert { border-color: var(--danger); color: var(--danger); background: #ffebee; }
+  .btn-alert { border-color: var(--danger); color: var(--danger); background: rgba(248,113,113,0.14); }
   .btn-alert:hover { background: var(--danger); color: #fff; }
   .btn-tipos { border-color: #00897b; color: #00897b; }
   .btn-tipos:hover { background: #00897b; color: #fff; }
   .banner {
     display: none; margin: 0.9rem 2rem 0; padding: 0.8rem 1.2rem; border-radius: 10px;
-    background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; font-size: 0.85rem; font-weight: 700;
+    background: rgba(251,191,36,0.12); color: #fbbf24; border: 1px solid rgba(251,191,36,0.4); font-size: 0.85rem; font-weight: 700;
     cursor: pointer; box-shadow: var(--shadow);
   }
   .banner.show { display: block; }
   .banner .danger { color: var(--danger); }
+  .venc-grupo { background: var(--card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.7rem; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .venc-motorista { padding: 0.55rem 0.8rem; font-weight: 700; color: #93c5fd; background: #1d2b49; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+  .venc-motorista:hover { background: #24365c; }
+  .venc-motorista .venc-count { font-size: 0.75rem; color: var(--text-dim); font-weight: 600; }
+  .venc-docs { padding: 0.45rem 0.8rem 0.6rem 1.5rem; display: flex; flex-direction: column; gap: 0.35rem; }
+  .venc-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; flex-wrap: wrap; }
+  .venc-item .venc-nombre { font-weight: 600; }
+  .venc-item .venc-sub { color: var(--text-dim); font-size: 0.78rem; }
   .table-wrap { flex: 1; overflow: auto; padding: 1rem 2rem; }
   table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
   .table-wrap table { box-shadow: var(--shadow); border-radius: 8px; overflow: hidden; }
   thead th {
-    background: #0d47a1; color: #fff; font-weight: 700; text-transform: uppercase;
+    background: #1d3562; color: #fff; font-weight: 700; text-transform: uppercase;
     font-size: 0.7rem; letter-spacing: 0.8px; padding: 0.8rem 0.7rem; text-align: left;
     position: sticky; top: 0; z-index: 2; white-space: nowrap;
   }
   tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; cursor: pointer; }
   tbody tr:hover { background: var(--row-hover); }
-  tbody tr.selected { background: #e3f2fd; border-left: 3px solid var(--accent); }
+  tbody tr.selected { background: #16324f; border-left: 3px solid var(--accent); }
   tbody td { padding: 0.65rem 0.7rem; vertical-align: middle; }
   .nombre { font-weight: 700; font-size: 0.85rem; }
   .sub { color: var(--text-dim); font-size: 0.72rem; margin-top: 0.15rem; }
   .estado-tag { padding: 0.2rem 0.55rem; border-radius: 4px; font-size: 0.72rem; font-weight: 700; }
-  .est-act { background: #e8f5e9; color: #2e7d32; }
-  .est-inact { background: #eceff1; color: #546e7a; }
+  .est-act { background: rgba(74,222,128,0.15); color: #4ade80; }
+  .est-inact { background: rgba(148,163,184,0.14); color: #94a3b8; }
   .doc-resumen { font-size: 0.78rem; font-weight: 600; }
   .doc-resumen .bad { color: var(--danger); }
   .doc-resumen .warn { color: var(--warning); }
   .doc-resumen .ok { color: var(--success); }
   .status-select { display: inline-block; padding: 0.25rem 0.65rem; border-radius: 6px; border: 2px solid; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
-  .st-vig  { border-color: #2e7d32; color: #2e7d32; background: #e8f5e9; }
-  .st-porv { border-color: #ef6c00; color: #ef6c00; background: #fff3e0; }
-  .st-venc { border-color: #c62828; color: #c62828; background: #ffebee; }
-  .st-sin  { border-color: #90a4ae; color: #607d8b; background: #eceff1; }
+  .st-vig  { border-color: #4ade80; color: #4ade80; background: rgba(74,222,128,0.14); }
+  .st-porv { border-color: #fbbf24; color: #fbbf24; background: rgba(251,191,36,0.14); }
+  .st-venc { border-color: #f87171; color: #f87171; background: rgba(248,113,113,0.14); }
+  .st-sin  { border-color: #64748b; color: #94a3b8; background: rgba(148,163,184,0.12); }
   .no-results { text-align: center; padding: 3rem; color: var(--text-dim); font-size: 1rem; }
   .btn-icon { width: 30px; height: 28px; border-radius: 6px; border: 1px solid; background: transparent; cursor: pointer; font-size: 0.8rem; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s; }
   .db-actions { display: flex; gap: 0.4rem; }
@@ -137,7 +147,7 @@
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: flex-start; padding: 3vh 1rem; overflow-y: auto; }
   .modal-overlay.active { display: flex; }
   .modal { background: var(--card); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 620px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
-  .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--border); background: #f8fafc; border-radius: 16px 16px 0 0; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--border); background: #131d33; border-radius: 16px 16px 0 0; }
   .modal-header h2 { font-size: 1.1rem; color: var(--accent); }
   .modal-close { background: none; border: none; color: var(--text-dim); font-size: 1.5rem; cursor: pointer; padding: 0.2rem 0.5rem; border-radius: 6px; transition: all 0.2s; }
   .modal-close:hover { background: var(--danger); color: #fff; }
@@ -149,27 +159,27 @@
     padding: 0.5rem 0.8rem; border-radius: 6px; border: 1px solid var(--border);
     background: var(--card); color: var(--text); font-size: 0.85rem; outline: none;
   }
-  .form-group input:focus, .form-group select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(21,101,192,0.15); }
+  .form-group input:focus, .form-group select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(56,189,248,0.22); }
   .form-btns { display: flex; gap: 0.6rem; margin-top: 0.5rem; }
   .btn-save { padding: 0.5rem 1.2rem; border-radius: 6px; border: none; background: var(--success); color: #fff; font-weight: 700; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; }
   .btn-save:hover { filter: brightness(1.15); }
   .btn-cancel { padding: 0.5rem 1.2rem; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); font-weight: 600; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; }
   .btn-cancel:hover { border-color: var(--text); color: var(--text); }
   .modal-actions { display: flex; gap: 0.6rem; margin-bottom: 1rem; flex-wrap: wrap; }
-  .db-form { display: none; background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem; }
+  .db-form { display: none; background: #131d33; border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem; }
   .db-form.active { display: block; }
   .db-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-  .db-table th { background: #0d47a1; color: #fff; font-weight: 700; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.5px; padding: 0.7rem 0.6rem; text-align: left; }
+  .db-table th { background: #1d3562; color: #fff; font-weight: 700; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.5px; padding: 0.7rem 0.6rem; text-align: left; }
   .db-table td { padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--border); }
   .db-table tr:hover { background: var(--row-hover); }
-  .doc-info { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1rem; padding: 0.5rem 0.8rem; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border); }
+  .doc-info { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1rem; padding: 0.5rem 0.8rem; background: #131d33; border-radius: 6px; border: 1px solid var(--border); }
   .doc-row td { padding: 0.4rem 0.6rem; }
   .doc-row input.fecha-txt { width: 100%; min-width: 120px; padding: 0.4rem 0.5rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.8rem; background: var(--card); color: var(--text); letter-spacing: 0.03em; }
-  .doc-row input.fecha-txt:disabled { background: #f1f3f5; color: var(--text-dim); cursor: default; }
+  .doc-row input.fecha-txt:disabled { background: #101a2e; color: var(--text-dim); cursor: default; }
   .doc-row .extra-select { width: 100%; min-width: 110px; padding: 0.4rem 0.5rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.8rem; background: var(--card); color: var(--text); }
   .doc-nombre { font-weight: 600; line-height: 1.3; }
   .doc-sub { color: var(--text-dim); font-size: 0.7rem; margin-top: 0.15rem; line-height: 1.3; }
-  .cat-row td { background: #e3ecf7; color: #0d47a1; font-weight: 700; font-size: 0.78rem; letter-spacing: 0.5px; padding: 0.5rem 0.7rem; border-top: 2px solid var(--border); }
+  .cat-row td { background: #1e3357; color: #93c5fd; font-weight: 700; font-size: 0.78rem; letter-spacing: 0.5px; padding: 0.5rem 0.7rem; border-top: 2px solid var(--border); }
   .doc-child-row td { padding: 0.15rem 0.7rem 0.15rem 2.4rem; border: none; }
   .doc-child { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; cursor: pointer; }
   .doc-child input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--success); cursor: pointer; }
@@ -177,7 +187,7 @@
   .hijo-pend { color: var(--text-dim); }
   .cat-child td { color: var(--text); }
   .form-group textarea { padding: 0.5rem 0.8rem; border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 0.85rem; outline: none; font-family: inherit; resize: vertical; }
-  .form-group textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(21,101,192,0.15); }
+  .form-group textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(56,189,248,0.22); }
   .hint { font-size: 0.78rem; color: var(--text-dim); margin: 0.6rem 0 1rem; line-height: 1.5; }
   @media (max-width: 900px) {
     header { padding: 1rem; }
@@ -337,20 +347,9 @@
           <option value="VIGENTE">Vigentes</option>
         </select>
       </div>
-      <table class="db-table">
-        <thead>
-          <tr>
-            <th>Vence</th>
-            <th>Motorista</th>
-            <th>Tipo</th>
-            <th>Fecha</th>
-            <th>Estado</th>
-          </tr>
-        </thead>
-        <tbody id="vencBody"></tbody>
-      </table>
+      <div id="vencBody"></div>
       <div id="vencNoRes" style="display:none;text-align:center;color:var(--text-dim);padding:2rem">No hay documentos con ese filtro.</div>
-      <p class="hint">Toca una fila para abrir los documentos del motorista.</p>
+      <p class="hint">Toca el nombre del motorista para abrir sus documentos.</p>
     </div>
   </div>
 </div>
@@ -615,11 +614,11 @@ function renderStats() {
   const vencidos = mdocs.filter(d => { const e = estadoDoc(d.vence); return e.clase === "st-venc"; }).length;
   const porVencer = mdocs.filter(d => { const e = estadoDoc(d.vence); return e.clase === "st-porv"; }).length;
   const chips = [
-    { t: "Total motoristas", v: motoristas.length, c: "#1565c0", bg: "#e3f2fd", b: "#1565c0" },
-    { t: "Activos", v: activos, c: "#2e7d32", bg: "#e8f5e9", b: "#2e7d32" },
-    { t: "Docs vigentes", v: conteoTotal - vencidos - porVencer, c: "#546e7a", bg: "#eceff1", b: "#546e7a" },
-    { t: "Por vencer", v: porVencer, c: "#ef6c00", bg: "#fff3e0", b: "#ef6c00" },
-    { t: "Vencidos", v: vencidos, c: "#c62828", bg: "#ffebee", b: "#c62828" }
+    { t: "Total motoristas", v: motoristas.length, c: "#38bdf8", bg: "rgba(56,189,248,0.14)", b: "#38bdf8" },
+    { t: "Activos", v: activos, c: "#4ade80", bg: "rgba(74,222,128,0.14)", b: "#4ade80" },
+    { t: "Docs vigentes", v: conteoTotal - vencidos - porVencer, c: "#94a3b8", bg: "rgba(148,163,184,0.12)", b: "#64748b" },
+    { t: "Por vencer", v: porVencer, c: "#fbbf24", bg: "rgba(251,191,36,0.14)", b: "#fbbf24" },
+    { t: "Vencidos", v: vencidos, c: "#f87171", bg: "rgba(248,113,113,0.14)", b: "#f87171" }
   ];
   $("statsBar").innerHTML = chips.map(ch =>
     `<div class="stat-chip" style="background:${ch.bg};color:${ch.c};border:2px solid ${ch.b}">
@@ -875,34 +874,54 @@ function saveDoc(gi) {
 }
 
 /* ========== VENCIMIENTOS ========== */
-function abrirVencimientos() { $("vencModal").classList.add("active"); renderVencimientos(); }
+function abrirVencimientos() { $("filtroVenc").value = "VENCIDO"; $("vencModal").classList.add("active"); renderVencimientos(); }
 function closeVencModal() { $("vencModal").classList.remove("active"); }
 function renderVencimientos() {
   const filtro = $("filtroVenc").value;
-  const tbody = $("vencBody");
+  const cont = $("vencBody");
   const noRes = $("vencNoRes");
   let lista = mdocs.filter(d => d.vence).map(d => {
     const m = motoristas.find(x => x.id === d.motoristaId);
-    const e = estadoDoc(d.vence);
-    return { d: d, m: m, e: e };
+    return { d: d, m: m, e: estadoDoc(d.vence) };
   });
   if (filtro === "POR_VENCER") lista = lista.filter(x => x.e.clase === "st-porv");
   else if (filtro === "VENCIDO") lista = lista.filter(x => x.e.clase === "st-venc");
   else if (filtro === "VIGENTE") lista = lista.filter(x => x.e.clase === "st-vig");
-  lista.sort((a, b) => (a.d.vence < b.d.vence ? -1 : a.d.vence > b.d.vence ? 1 : 0));
   if (!lista.length) {
-    tbody.innerHTML = "";
+    cont.innerHTML = "";
     noRes.style.display = "block";
     return;
   }
   noRes.style.display = "none";
-  tbody.innerHTML = lista.map(x => `<tr onclick="abrirDesdeVenc(${x.d.motoristaId})">
-    <td style="color:var(--text-dim);font-weight:600">${fmtFecha(x.d.vence)}</td>
-    <td style="font-weight:600">${x.m ? esc(x.m.nombre) : "—"}</td>
-    <td>${esc(x.d.tipo || "")}</td>
-    <td>${x.d.emit ? "Emit.: " + fmtFecha(x.d.emit) : "—"}</td>
-    <td><span class="status-select ${x.e.clase}">${x.e.label}</span></td>
-  </tr>`).join("");
+  const grupos = {};
+  lista.forEach(x => {
+    const key = x.m ? x.m.id : "SIN_MOTORISTA";
+    if (!grupos[key]) grupos[key] = { m: x.m, docs: [] };
+    grupos[key].docs.push(x);
+  });
+  const claves = Object.keys(grupos).sort((a, b) => {
+    const na = (grupos[a].m ? grupos[a].m.nombre : "").toLowerCase();
+    const nb = (grupos[b].m ? grupos[b].m.nombre : "").toLowerCase();
+    return na.localeCompare(nb, "es");
+  });
+  cont.innerHTML = claves.map(key => {
+    const g = grupos[key];
+    const nombre = g.m ? esc(g.m.nombre) : "—";
+    const total = g.docs.length;
+    g.docs.sort((a, b) => (a.d.vence < b.d.vence ? -1 : a.d.vence > b.d.vence ? 1 : 0));
+    const rows = g.docs.map(x => {
+      const sub = (x.d.emit ? "Emit.: " + fmtFecha(x.d.emit) + " · " : "") + "Vence: " + fmtFecha(x.d.vence);
+      return `<div class="venc-item">
+        <span class="status-select ${x.e.clase}">${x.e.label}</span>
+        <span class="venc-nombre">${esc(x.d.tipo || "")}</span>
+        <span class="venc-sub">${sub}</span>
+      </div>`;
+    }).join("");
+    return `<div class="venc-grupo">
+      <div class="venc-motorista" onclick="abrirDesdeVenc(${g.m ? g.m.id : 0})">👤 ${nombre}<span class="venc-count">${total} documento${total === 1 ? "" : "s"}</span></div>
+      <div class="venc-docs">${rows}</div>
+    </div>`;
+  }).join("");
 }
 function abrirDesdeVenc(id) { closeVencModal(); openDocsModal(id); }
 
