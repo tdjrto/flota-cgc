@@ -506,6 +506,7 @@
   <button class="btn btn-del" id="btnEliminarSeleccion" onclick="eliminarFlotaSeleccionado()" disabled>🗑️<span class="btxt"> Eliminar seleccionado</span></button>
   <button class="btn btn-export" onclick="exportToExcel()">📥<span class="btxt"> Exportar a Excel</span></button>
   <button class="btn btn-image" onclick="exportarImagen()">🖼️<span class="btxt"> Exportar Imagen</span></button>
+  <button class="btn btn-image" onclick="exportarImagenGrupo()">🖼️<span class="btxt"> Imagen grupo</span></button>
   <button class="btn btn-db" onclick="openDBModal()">🗄️<span class="btxt"> Asignación de Cisternas</span></button>
   <button class="btn btn-hist" onclick="openHistorialSection()">📜<span class="btxt"> Historial</span></button>
   <button class="btn btn-cist" onclick="openCisternasModal()">🗂️<span class="btxt"> Catálogo Cisternas</span></button>
@@ -1268,6 +1269,66 @@ function exportarImagen() {
     link.click();
     document.body.removeChild(contenedor);
     showToast("🖼️ Imagen exportada correctamente");
+  }).catch(err => {
+    document.body.removeChild(contenedor);
+    showToast("Error al generar la imagen", "error");
+    console.error(err);
+  });
+}
+
+function exportarImagenGrupo() {
+  if (!window.html2canvas) { showToast("Librería no cargada, intentá de nuevo"); return; }
+  if (!fleetData.length) { showToast("No hay datos para exportar"); return; }
+  const estadoOrder = { "A CARGA": 0, "DISPONIBLE": 1, "PRECARGADO": 2, "CARGADO": 3, "NO DISPONIBLE": 4 };
+  const sorted = [...fleetData].sort((a, b) => {
+    const orderA = estadoOrder[getVehicleStatus(a)] ?? 99;
+    const orderB = estadoOrder[getVehicleStatus(b)] ?? 99;
+    if (orderA !== orderB) return orderA - orderB;
+    const fa = a.fechaCambio && a.horaCambio ? a.fechaCambio + "T" + a.horaCambio : a.fechaCambio || "";
+    const fb = b.fechaCambio && b.horaCambio ? b.fechaCambio + "T" + b.horaCambio : b.fechaCambio || "";
+    if (fa && fb) return fa.localeCompare(fb);
+    if (fa) return -1;
+    if (fb) return 1;
+    const na = parseInt(a.cist.replace(/\D/g, '')) || 0;
+    const nb = parseInt(b.cist.replace(/\D/g, '')) || 0;
+    return na - nb;
+  });
+  const contenedor = document.createElement("div");
+  contenedor.style.cssText = "position:absolute;left:-9999px;top:0;background:#fff;padding:16px;font-family:'Segoe UI',sans-serif;width:880px;";
+  document.body.appendChild(contenedor);
+  const titulo = document.createElement("div");
+  titulo.style.cssText = "font-size:18px;font-weight:700;color:#0d47a1;margin-bottom:12px;padding:0 4px;";
+  titulo.textContent = "🚛 Flota Cisternas CGC - Control de Estado";
+  contenedor.appendChild(titulo);
+  const stColors = { "A CARGA":"color:#2e7d32", "DISPONIBLE":"color:#1565c0", "PRECARGADO":"color:#ef6c00", "CARGADO":"color:#546e7a", "NO DISPONIBLE":"color:#c62828" };
+  const th = (t, w) => `<th style="width:${w};padding:9px 12px;text-align:left;text-transform:uppercase;font-size:11px;letter-spacing:0.5px;background:#0d47a1;color:#fff;">${t}</th>`;
+  const tabla = document.createElement("table");
+  tabla.style.cssText = "border-collapse:collapse;width:100%;font-size:14px;table-layout:fixed;";
+  tabla.innerHTML = `<thead><tr>${th('Placa','14%')}${th('Motorista','36%')}${th('Estado','16%')}${th('Observación','34%')}</tr></thead>`;
+  const tbody = document.createElement("tbody");
+  sorted.forEach((v, i) => {
+    const st = getVehicleStatus(v);
+    const bgColor = i % 2 === 0 ? "#fff" : "#f5f8fc";
+    tbody.innerHTML += `<tr style="background:${bgColor};border-bottom:1px solid #dce2eb;">
+      <td style="padding:8px 12px;font-weight:700;white-space:nowrap;">${v.cabezal}</td>
+      <td style="padding:8px 12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${v.conductor}</td>
+      <td style="padding:8px 12px;font-weight:700;white-space:nowrap;${stColors[st] || 'color:#333'}">${st}</td>
+      <td style="padding:8px 12px;color:#7a8ba3;font-size:12px;word-break:break-word;">${v.obs || '—'}</td>
+    </tr>`;
+  });
+  tabla.appendChild(tbody);
+  contenedor.appendChild(tabla);
+  const fechaHora = document.createElement("div");
+  fechaHora.style.cssText = "font-size:11px;color:#94a3b8;margin-top:8px;text-align:right;padding:0 4px;";
+  fechaHora.textContent = `Generado: ${new Date().toLocaleString("es-HN")}`;
+  contenedor.appendChild(fechaHora);
+  html2canvas(contenedor, { scale: 2, useCORS: true, backgroundColor: "#fff" }).then(canvas => {
+    const link = document.createElement("a");
+    link.download = "Flota_Grupo_CGC.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+    document.body.removeChild(contenedor);
+    showToast("🖼️ Imagen grupo exportada");
   }).catch(err => {
     document.body.removeChild(contenedor);
     showToast("Error al generar la imagen", "error");
