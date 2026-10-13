@@ -1191,6 +1191,31 @@ function exportToExcel() {
   showToast("📥 Excel exportado correctamente");
 }
 
+function guardarImagen(canvas, nombreArchivo) {
+  const descargar = () => {
+    const link = document.createElement("a");
+    link.download = nombreArchivo;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+    showToast("🖼️ Imagen exportada");
+  };
+  const esIPhone = /iPhone|iPod/i.test(navigator.userAgent);
+  if (!esIPhone || !navigator.canShare) { descargar(); return; }
+  canvas.toBlob(function(blob) {
+    if (!blob) { descargar(); return; }
+    let file = null;
+    try { file = new File([blob], nombreArchivo, { type: "image/png" }); }
+    catch (e) { file = null; }
+    if (!file || !navigator.canShare({ files: [file] })) { descargar(); return; }
+    navigator.share({ files: [file], title: "Flota Cisternas CGC" })
+      .then(() => showToast("📤 Imagen lista para enviar"))
+      .catch(function(err) {
+        if (err && err.name === "AbortError") return;
+        descargar();
+      });
+  }, "image/png");
+}
+
 function exportarImagen() {
   if (!window.html2canvas) { showToast("Librería no cargada, intentá de nuevo", "error"); return; }
   const estadoOrder = { "A CARGA": 0, "DISPONIBLE": 1, "PRECARGADO": 2, "CARGADO": 3, "NO DISPONIBLE": 4 };
@@ -1263,12 +1288,8 @@ function exportarImagen() {
   fechaHora.textContent = `Generado: ${new Date().toLocaleString("es-HN")}`;
   contenedor.appendChild(fechaHora);
   html2canvas(contenedor, { scale: 2, useCORS: true, backgroundColor: "#fff" }).then(canvas => {
-    const link = document.createElement("a");
-    link.download = "Flota_Cisternas_CGC.png";
-    link.href = canvas.toDataURL("image/png");
-    link.click();
     document.body.removeChild(contenedor);
-    showToast("🖼️ Imagen exportada correctamente");
+    guardarImagen(canvas, "Flota_Cisternas_CGC.png");
   }).catch(err => {
     document.body.removeChild(contenedor);
     showToast("Error al generar la imagen", "error");
@@ -1323,12 +1344,8 @@ function exportarImagenGrupo() {
   fechaHora.textContent = `Generado: ${new Date().toLocaleString("es-HN")}`;
   contenedor.appendChild(fechaHora);
   html2canvas(contenedor, { scale: 2, useCORS: true, backgroundColor: "#fff" }).then(canvas => {
-    const link = document.createElement("a");
-    link.download = "Flota_Grupo_CGC.png";
-    link.href = canvas.toDataURL("image/png");
-    link.click();
     document.body.removeChild(contenedor);
-    showToast("🖼️ Imagen grupo exportada");
+    guardarImagen(canvas, "Flota_Grupo_CGC.png");
   }).catch(err => {
     document.body.removeChild(contenedor);
     showToast("Error al generar la imagen", "error");
