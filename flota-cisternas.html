@@ -1199,8 +1199,7 @@ function guardarImagen(canvas, nombreArchivo) {
     link.click();
     showToast("🖼️ Imagen exportada");
   };
-  const esIPhone = /iPhone|iPod/i.test(navigator.userAgent);
-  if (!esIPhone || !navigator.canShare) { descargar(); return; }
+  if (!navigator.canShare) { descargar(); return; }
   canvas.toBlob(function(blob) {
     if (!blob) { descargar(); return; }
     let file = null;
